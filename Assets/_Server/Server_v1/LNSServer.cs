@@ -367,13 +367,14 @@ public class LNSServer : IDisposable
     }
 
 
-    public void RemoveGame(string gameKey)
+    public void RemoveGame(LNSGame game)
     {
         lock(thelock)
         {
-            if(games.ContainsKey(gameKey))
+            if(games.ContainsKey(game.gameKey))
             {
-                games.Remove(gameKey);
+                games.Remove(game.gameKey);
+                game = null;
             }
         }
     }
