@@ -7,6 +7,9 @@ using LiteNetLib.Utils;
 public class LNSRoom : IDisposable
 {
     public string id { get; set; }
+    public string gameKey { get; set; }
+    public string gameVersion { get; set; }
+    public byte primaryPlatform { get; set; }
     public int maxPlayers { get; set; } = 100;
     public string password { get; set; } = null;
     public bool isPublic { get; set; } = true;
@@ -26,7 +29,7 @@ public class LNSRoom : IDisposable
         }
     }
 
-    public LNSServer server { get; set; }
+    public LNSGame assocGame { get; set; }
     public bool isOpen { get; private set; } = true;
 
     public List<LNSClient> clients { get; set; } = new List<LNSClient>();
@@ -121,6 +124,10 @@ public class LNSRoom : IDisposable
                         client.writer.Put(LNSConstants.CLIENT_EVT_ROOM_PLAYER_CONNECTED);
                         client.writer.Put(clients[i].id);
                         client.writer.Put(clients[i].displayname);
+                        //client.writer.Put(clients[i].gameKey);
+                        client.writer.Put(clients[i].gameVersion);
+                        client.writer.Put((byte) clients[i].platform);
+                       
 
                         client.peer.Send(client.writer, DeliveryMethod.ReliableOrdered);
                     }
@@ -159,7 +166,7 @@ public class LNSRoom : IDisposable
                     catch { }
                     if (clients.Count <= 0)
                     {
-                        server.RemoveRoom(this); // Destroy room
+                        assocGame.RemoveRoom(this); // Destroy room
                     }
                 }).Start(); ;
                 
@@ -189,6 +196,9 @@ public class LNSRoom : IDisposable
             //UnityEngine.Debug.Log("SendPlayerConnectedEvent " + client.id + " "+client.displayname);
             writer.Put(client.id);
             writer.Put(client.displayname);
+            //writer.Put(client.gameKey);
+            writer.Put(client.gameVersion);
+            writer.Put((byte)client.platform);
 
             for (int i=0;i<clients.Count;i++)
             {

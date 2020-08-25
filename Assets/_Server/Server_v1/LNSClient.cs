@@ -9,6 +9,10 @@ public class LNSClient : IDisposable
     public int networkid { get; set; }
     public string id { get; set; }
     public string displayname { get; set; }
+    public string gameKey { get; set; }
+    public string gameVersion { get; set; }
+    public LNSConstants.CLIENT_PLATFORM platform { get; set; }
+   
 
     public NetPeer peer { get; set; }
     public LNSRoom connectedRoom { get; set; }
@@ -48,12 +52,13 @@ public class LNSClient : IDisposable
     }
 
    
-    public void SendFailedToCreateRoomEvent()
+    public void SendFailedToCreateRoomEvent(LNSConstants.ROOM_FAILURE_CODE code)
     {
         lock(thelock)
         {
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_FAILED_CREATE);
+            writer.Put((byte)code);
             peer.Send(writer, DeliveryMethod.ReliableOrdered);
         }
     }
