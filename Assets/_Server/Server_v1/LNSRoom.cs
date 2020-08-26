@@ -34,6 +34,7 @@ public class LNSRoom : IDisposable
 
     public List<LNSClient> clients { get; set; } = new List<LNSClient>();
     public List<string> disconnectedClients { get; set; } = new List<string>();
+    
     public LNSClient masterClient { get; set; }
     public NetDataWriter writer { get; set; }
     
@@ -54,7 +55,7 @@ public class LNSRoom : IDisposable
     public void ProcessReceivedData(LNSClient from,byte instructionCode,NetPacketReader reader, DeliveryMethod deliveryMethod)
     {
         byte code = instructionCode;
-        if(code == LNSConstants.SERVER_EVT_LOCK_ROOM)
+        if (code == LNSConstants.SERVER_EVT_LOCK_ROOM)
         {
             isOpen = false;
             return;
@@ -64,19 +65,60 @@ public class LNSRoom : IDisposable
             isOpen = true;
             return;
         }
-
-
-        lock (thelock)
+        else if (code == LNSConstants.SERVER_EVT_RAW_DATA_TO_CLIENT)
         {
-            writer.Reset();
-            writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-            writer.Put(from.id);
-            writer.Put(reader.GetRemainingBytes());
-            for (int i = 0; i < clients.Count; i++)
+            string targetid = reader.GetString();
+
+            lock (thelock)
             {
-                if (clients[i].networkid != from.networkid)
+                for (int i = 0; i < clients.Count; i++)
                 {
-                    clients[i].peer.Send(writer, deliveryMethod);
+                    if (clients[i].id == targetid)
+                    {
+                        writer.Reset();
+                        writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
+                        writer.Put(from.id);
+                        writer.Put(reader.GetRemainingBytes());
+                        clients[i].peer.Send(writer, deliveryMethod);
+                        break;
+                    }
+                }
+            }
+            
+        }
+        else if(code == LNSConstants.SERVER_EVT_RAW_DATA_CACHE)
+        {
+            /*
+            lock (thelock)
+            {
+                writer.Reset();
+                writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
+                writer.Put(from.id);
+                writer.Put(reader.GetRemainingBytes());
+                for (int i = 0; i < clients.Count; i++)
+                {
+                    if (clients[i].networkid != from.networkid)
+                    {
+                        clients[i].peer.Send(writer, deliveryMethod);
+                    }
+                }
+            }*/
+        }
+        else
+        {
+            
+            lock (thelock)
+            {
+                writer.Reset();
+                writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
+                writer.Put(from.id);
+                writer.Put(reader.GetRemainingBytes());
+                for (int i = 0; i < clients.Count; i++)
+                {
+                    if (clients[i].networkid != from.networkid)
+                    {
+                        clients[i].peer.Send(writer, deliveryMethod);
+                    }
                 }
             }
         }
@@ -112,10 +154,7 @@ public class LNSRoom : IDisposable
         {
             lock (thelock)
             {
-                client.writer.Reset();
-                client.writer.Put(LNSConstants.CLIENT_EVT_ROOM_MASTERCLIENT_CHANGED);
-                client.writer.Put(masterClient.id);
-                client.peer.Send(client.writer, DeliveryMethod.ReliableOrdered);
+               
                 for (int i = 0; i < clients.Count; i++)
                 {
                     if (clients[i].id != client.id)
@@ -124,14 +163,17 @@ public class LNSRoom : IDisposable
                         client.writer.Put(LNSConstants.CLIENT_EVT_ROOM_PLAYER_CONNECTED);
                         client.writer.Put(clients[i].id);
                         client.writer.Put(clients[i].displayname);
-                        //client.writer.Put(clients[i].gameKey);
-                        client.writer.Put(clients[i].gameVersion);
                         client.writer.Put((byte) clients[i].platform);
-                       
-
+                      
                         client.peer.Send(client.writer, DeliveryMethod.ReliableOrdered);
                     }
                 }
+
+                writer.Reset();
+                writer.Put(LNSConstants.CLIENT_EVT_ROOM_MASTERCLIENT_CHANGED);
+                writer.Put(masterClient.id);
+
+                client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
             }
         }
                
@@ -196,8 +238,6 @@ public class LNSRoom : IDisposable
             //UnityEngine.Debug.Log("SendPlayerConnectedEvent " + client.id + " "+client.displayname);
             writer.Put(client.id);
             writer.Put(client.displayname);
-            //writer.Put(client.gameKey);
-            writer.Put(client.gameVersion);
             writer.Put((byte)client.platform);
 
             for (int i=0;i<clients.Count;i++)

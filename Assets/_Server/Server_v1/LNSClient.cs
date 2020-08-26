@@ -11,7 +11,7 @@ public class LNSClient : IDisposable
     public string displayname { get; set; }
     public string gameKey { get; set; }
     public string gameVersion { get; set; }
-    public LNSConstants.CLIENT_PLATFORM platform { get; set; }
+    public CLIENT_PLATFORM platform { get; set; }
    
 
     public NetPeer peer { get; set; }
@@ -52,7 +52,7 @@ public class LNSClient : IDisposable
     }
 
    
-    public void SendFailedToCreateRoomEvent(LNSConstants.ROOM_FAILURE_CODE code)
+    public void SendFailedToCreateRoomEvent(ROOM_FAILURE_CODE code)
     {
         lock(thelock)
         {
@@ -93,7 +93,7 @@ public class LNSClient : IDisposable
         }
     }
 
-    public void SendRoomFailedToJoinEvent(LNSConstants.ROOM_FAILURE_CODE failureCode)
+    public void SendRoomFailedToJoinEvent(ROOM_FAILURE_CODE failureCode)
     {
         lock (thelock)
         {
@@ -104,7 +104,7 @@ public class LNSClient : IDisposable
         }
     }
 
-    public void SendRoomFailedToReJoinEvent(LNSConstants.ROOM_FAILURE_CODE failureCode)
+    public void SendRoomFailedToReJoinEvent(ROOM_FAILURE_CODE failureCode)
     {
         lock (thelock)
         {
