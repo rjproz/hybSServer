@@ -10,9 +10,7 @@ public class LNSRoom : IDisposable
     public string gameKey { get; set; }
     public string gameVersion { get; set; }
     public byte primaryPlatform { get; set; }
-    public int maxPlayers { get; set; } = 100;
-    public string password { get; set; } = null;
-    public bool isPublic { get; set; } = true;
+    public LNSCreateRoomParameters roomParameters { get; set; }
     public int playerCount
     {
         get
@@ -25,7 +23,7 @@ public class LNSRoom : IDisposable
     {
         get
         {
-            return !string.IsNullOrEmpty(password);
+            return !string.IsNullOrEmpty(roomParameters.password);
         }
     }
 
@@ -295,5 +293,15 @@ public class LNSRoom : IDisposable
             writer.Reset();
             writer = null;
         }
+    }
+
+    public bool IsFilterMatch(LNSJoinRoomFilter source)
+    {
+        if(roomParameters.filters == null && source.GetLength() > 0)
+        {
+            return false;
+        }
+
+        return roomParameters.filters.IsFilterMatch(source);
     }
 }

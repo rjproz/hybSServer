@@ -69,6 +69,7 @@ public class LNSClient : IDisposable
         {
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_CREATED);
+            writer.Put(connectedRoom.id);
             //UnityEngine.Debug.Log("SendRoomCreatedEvent");
             peer.Send(writer, DeliveryMethod.ReliableOrdered);
         }
@@ -80,6 +81,7 @@ public class LNSClient : IDisposable
         {
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_JOINED);
+            writer.Put(connectedRoom.id);
             peer.Send(writer, DeliveryMethod.ReliableOrdered);
         }
     }
@@ -89,6 +91,7 @@ public class LNSClient : IDisposable
         {
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_REJOINED);
+            writer.Put(connectedRoom.id);
             peer.Send(writer, DeliveryMethod.ReliableOrdered);
         }
     }

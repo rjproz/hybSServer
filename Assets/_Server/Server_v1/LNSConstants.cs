@@ -7,12 +7,15 @@ public class LNSConstants
     public const byte SERVER_EVT_JOIN_ROOM = 52;
     public const byte SERVER_EVT_LEAVE_ROOM = 53;
     public const byte SERVER_EVT_REJOIN_ROOM = 54;
+    public const byte SERVER_EVT_JOIN_RANDOM_ROOM = 55;
 
     public const byte SERVER_EVT_LOCK_ROOM = 60;
     public const byte SERVER_EVT_UNLOCK_ROOM = 61;
     public const byte SERVER_EVT_RAW_DATA_NOCACHE = 62;
     public const byte SERVER_EVT_RAW_DATA_CACHE = 63;
     public const byte SERVER_EVT_RAW_DATA_TO_CLIENT = 64;
+    public const byte SERVER_EVT_REMOVE_CLIENT_CACHE = 65;
+    public const byte SERVER_EVT_REMOVE_ALL_CACHE = 66;
 
 
 
@@ -32,7 +35,25 @@ public class LNSConstants
 
 }
 
-public enum ROOM_FAILURE_CODE { ROOM_FULL = 0, ROOM_LOCKED = 1, ROOM_DOESNT_EXIST = 2, PASSWORD_MISMATCH = 3, REJOIN_NOT_AUTHORIZED = 4, VERSION_MISMATCH = 5, ROOM_ALREADY_EXIST = 6, UNAUTHORIZED_APP = 7 };
-public enum CLIENT_PLATFORM { UNITY_EDITOR = 0, DESKTOP_WINDOWS = 1, DESKTOP_MACOS = 2, DESKTOP_LINUX, IOS = 3, ANDROID = 4 };
+public enum ROOM_FAILURE_CODE {
+    ROOM_FULL = 0,
+    ROOM_LOCKED = 1,
+    ROOM_DOESNT_EXIST = 2,
+    PASSWORD_MISMATCH = 3,
+    REJOIN_NOT_AUTHORIZED = 4,
+    VERSION_MISMATCH = 5,
+    ROOM_ALREADY_EXIST = 6,
+    UNAUTHORIZED_APP = 7,
+    ROOM_WITH_SPECIFIED_FILTER_DOESNT_EXIST = 8
+};
+
+public enum CLIENT_PLATFORM {
+    UNITY_EDITOR = 0,
+    DESKTOP_WINDOWS = 1,
+    DESKTOP_MACOS = 2,
+    DESKTOP_LINUX = 3,
+    IOS = 4,
+    ANDROID = 5
+};
 
 
