@@ -396,11 +396,14 @@ public class LNSServer : IDisposable
     {
         lock(thelock)
         {
+            Debug.Log("Removing Game: " + game.gameKey);
             if(games.ContainsKey(game.gameKey))
             {
                 games.Remove(game.gameKey);
                 game = null;
             }
+
+            Debug.Log("Total Games :" + games.Count);
         }
     }
 

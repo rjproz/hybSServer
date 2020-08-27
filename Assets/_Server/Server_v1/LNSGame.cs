@@ -32,7 +32,7 @@ public class LNSGame : IDisposable
                 room = null;
             }
         }
-        Debug.LogFormat("Total Rooms at {1} is {0} : ",gameKey,rooms.Count);
+        Debug.LogFormat("Total Rooms at {0} is {1} : ",gameKey,rooms.Count);
 
         if(rooms.Count == 0)
         {
