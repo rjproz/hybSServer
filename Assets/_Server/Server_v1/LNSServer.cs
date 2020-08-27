@@ -296,6 +296,7 @@ public class LNSServer : IDisposable
                                         client.connectedRoom = room;
                                         client.SendRoomJoinedEvent(); //: Room Joined
                                         room.AddPlayer(client);
+                                        found = true;
                                         break;
                                     }
                                 }

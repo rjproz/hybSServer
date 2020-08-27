@@ -170,7 +170,7 @@ public class LNSRoom : IDisposable
                 writer.Reset();
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_MASTERCLIENT_CHANGED);
                 writer.Put(masterClient.id);
-
+                
                 client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
             }
         }
