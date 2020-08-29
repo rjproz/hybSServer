@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using LiteNetLib;
+using LiteNetLib.Utils;
 using UnityEngine;
 
 public class LNSServer : IDisposable
@@ -9,9 +10,10 @@ public class LNSServer : IDisposable
     public int port { get; private set; }
     public string key { get; private set; }
 
-    private Dictionary<int, LNSClient> clients = new Dictionary<int, LNSClient>();
-    
-    private Dictionary<string, LNSGame> games = new Dictionary<string, LNSGame>();
+    public Dictionary<int, LNSClient> clients = new Dictionary<int, LNSClient>();
+    private List<string> connectedClientIds = new List<string>();
+
+    public Dictionary<string, LNSGame> games = new Dictionary<string, LNSGame>();
 
     public object thelock = new object();
 
@@ -47,52 +49,70 @@ public class LNSServer : IDisposable
                     {
 
                     }
-                    else if (clientKey == this.key)
+                    else if(clientKey != this.key)
                     {
-                   
-                        string userid = request.Data.GetString();
-                        string displayName = request.Data.GetString();
-                        string gameKey = request.Data.GetString();
-                        string version = request.Data.GetString();
-                        CLIENT_PLATFORM platform = (CLIENT_PLATFORM)request.Data.GetByte();
-
-
-                        if (string.IsNullOrEmpty(gameKey) || !gameKey.Contains("hybriona"))
-                        {
-                            //TODO Send unauthorized app error
-                            request.Reject();
-                        }
-                        else
-                        {
-                            NetPeer peer = request.Accept();
-                            LNSClient client = null;
-                            if (!clients.ContainsKey(peer.Id))
-                            {
-                                client = new LNSClient(peer);
-                                clients.Add(peer.Id, client);
-                            }
-                            else
-                            {
-                                client = clients[peer.Id];
-                                client.peer = peer;
-                            }
-                            client.networkid = peer.Id;
-                            client.id = userid;
-                            client.displayname = displayName;
-                            client.gameKey = gameKey;
-                            client.gameVersion = version;
-                            client.platform = platform;
-
-                            Debug.Log("Connected : " + peer.Id + " | Total clients: " + clients.Count);
-                        }
-                       
-
-
+                        NetDataWriter writer = new NetDataWriter(false, 1);
+                        writer.Put(LNSConstants.CLIENT_EVT_UNAUTHORIZED_CONNECTION);
+                        request.Reject(writer);
                     }
                     else
                     {
-                        request.Reject();
+                        try
+                        {
+                            string userid = request.Data.GetString();
+                            string displayName = request.Data.GetString();
+                            string gameKey = request.Data.GetString();
+                            string version = request.Data.GetString();
+                            CLIENT_PLATFORM platform = (CLIENT_PLATFORM)request.Data.GetByte();
+
+
+                            if (string.IsNullOrEmpty(gameKey) || !gameKey.Contains("hybriona") || string.IsNullOrEmpty(userid))
+                            {
+                                NetDataWriter writer = new NetDataWriter();
+                                writer.Put(LNSConstants.CLIENT_EVT_UNAUTHORIZED_GAME);
+                                request.Reject(writer);
+                            }
+                            else if (connectedClientIds.Contains(userid))
+                            {
+                                NetDataWriter writer = new NetDataWriter(false, 1);
+                                writer.Put(LNSConstants.CLIENT_EVT_USER_ALREADY_CONNECTED);
+                                request.Reject(writer);
+                            }
+                            else
+                            {
+                                NetPeer peer = request.Accept();
+                                LNSClient client = null;
+                                if (!clients.ContainsKey(peer.Id))
+                                {
+                                    client = new LNSClient(peer);
+                                    clients.Add(peer.Id, client);
+                                }
+                                else
+                                {
+                                    client = clients[peer.Id];
+                                    client.peer = peer;
+                                }
+                                client.networkid = peer.Id;
+                                client.id = userid;
+                                client.displayname = displayName;
+                                client.gameKey = gameKey;
+                                client.gameVersion = version;
+                                client.platform = platform;
+                                connectedClientIds.Add(userid);
+                                Debug.Log("Connected : " + peer.Id + " | Total clients: " + clients.Count);
+                            }
+
+                        }
+                        catch
+                        {
+                            NetDataWriter writer = new NetDataWriter(false, 1);
+                            writer.Put(LNSConstants.CLIENT_EVT_SERVER_EXECEPTION);
+                            request.Reject(writer);
+                        }
+
                     }
+
+                  
                 }
                 
             };
@@ -119,7 +139,6 @@ public class LNSServer : IDisposable
             {
                 int peerId = peer.Id;
                 LNSClient client = clients[peerId];
-
                 byte instruction = reader.GetByte();
 
                 if (client.connectedRoom == null)
@@ -145,6 +164,7 @@ public class LNSServer : IDisposable
                     Dictionary<string,LNSRoom> rooms = game.rooms;
                     if (instruction == LNSConstants.SERVER_EVT_CREATE_ROOM)
                     {
+                        Debug.Log("Create room");
                         string roomid = reader.GetString();
                         LNSCreateRoomParameters roomParameters = LNSCreateRoomParameters.FromReader(reader);
                         lock (thelock)
@@ -304,7 +324,7 @@ public class LNSServer : IDisposable
 
                             if (!found)
                             {
-                                client.SendRoomFailedToJoinEvent(ROOM_FAILURE_CODE.ROOM_WITH_SPECIFIED_FILTER_DOESNT_EXIST); // Room join failed
+                                client.SendRoomFailedToRandomJoin(); // Room join failed
                             }
                           
                         }
@@ -375,8 +395,13 @@ public class LNSServer : IDisposable
                     int peerId = peer.Id;
                     if (clients.ContainsKey(peerId))
                     {
-                        clients[peerId].SendDisconnectEvent(false);
-                        clients[peerId].Dispose();
+                        LNSClient client = clients[peerId];
+                        client.SendDisconnectEvent(false);
+                        if (connectedClientIds.Contains(client.id))
+                        {
+                            connectedClientIds.Remove(client.id);
+                        }
+                        client.Dispose();
                         clients.Remove(peerId);
                     }
                 }

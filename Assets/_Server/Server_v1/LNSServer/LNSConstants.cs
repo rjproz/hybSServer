@@ -1,5 +1,4 @@
 ﻿
-
 public class LNSConstants
 {
     public const byte SERVER_EVT_CREATE_ROOM = 50;
@@ -31,11 +30,20 @@ public class LNSConstants
     public const byte CLIENT_EVT_ROOM_FAILED_JOIN = 13;
     public const byte CLIENT_EVT_ROOM_REJOINED = 14;
     public const byte CLIENT_EVT_ROOM_FAILED_REJOIN = 15;
+    public const byte CLIENT_EVT_ROOM_FAILED_RANDOM_JOIN = 16;
+
+    public const byte CLIENT_EVT_SERVER_EXECEPTION = 91;
+    public const byte CLIENT_EVT_UNAUTHORIZED_CONNECTION = 92;
+    public const byte CLIENT_EVT_UNAUTHORIZED_GAME = 93;
+    public const byte CLIENT_EVT_USER_ALREADY_CONNECTED = 94;
 
 
 }
 
-public enum ROOM_FAILURE_CODE {
+
+
+public enum ROOM_FAILURE_CODE
+{
     ROOM_FULL = 0,
     ROOM_LOCKED = 1,
     ROOM_DOESNT_EXIST = 2,
@@ -47,7 +55,9 @@ public enum ROOM_FAILURE_CODE {
     ROOM_WITH_SPECIFIED_FILTER_DOESNT_EXIST = 8
 };
 
-public enum CLIENT_PLATFORM {
+
+public enum CLIENT_PLATFORM
+{
     UNITY_EDITOR = 0,
     DESKTOP_WINDOWS = 1,
     DESKTOP_MACOS = 2,
@@ -55,5 +65,15 @@ public enum CLIENT_PLATFORM {
     IOS = 4,
     ANDROID = 5
 };
+
+public enum CONNECTION_FAILURE_CODE
+{
+    UNKNOWN_ERROR = 0,
+    SERVER_EXECPTION = 1,
+    COULD_NOT_CONNECT_TO_HOST = 2,
+    CONNECTION_IS_NOT_AUTHORIZED = 3,
+    GAME_IS_NOT_AUTHORIZED = 4,
+    USER_IS_ALREADY_CONNECTED = 5
+}
 
 

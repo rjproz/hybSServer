@@ -162,7 +162,8 @@ public class LNSRoom : IDisposable
                         client.writer.Put(clients[i].id);
                         client.writer.Put(clients[i].displayname);
                         client.writer.Put((byte) clients[i].platform);
-                      
+                        client.writer.Put(clients[i].networkid);
+
                         client.peer.Send(client.writer, DeliveryMethod.ReliableOrdered);
                     }
                 }
@@ -232,11 +233,13 @@ public class LNSRoom : IDisposable
         lock (thelock)
         {
             writer.Reset();
+
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_PLAYER_CONNECTED);
             //UnityEngine.Debug.Log("SendPlayerConnectedEvent " + client.id + " "+client.displayname);
             writer.Put(client.id);
             writer.Put(client.displayname);
             writer.Put((byte)client.platform);
+            writer.Put(client.networkid);
 
             for (int i=0;i<clients.Count;i++)
             {

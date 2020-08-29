@@ -32,7 +32,9 @@ public class LNSClient : IDisposable
         GC.SuppressFinalize(this);
     }
 
-  
+
+   
+
     public void SendDisconnectEvent(bool leftroom)
     {
        
@@ -103,6 +105,16 @@ public class LNSClient : IDisposable
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_FAILED_JOIN);
             writer.Put((byte)failureCode);
+            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+        }
+    }
+
+    public void SendRoomFailedToRandomJoin()
+    {
+        lock (thelock)
+        {
+            writer.Reset();
+            writer.Put(LNSConstants.CLIENT_EVT_ROOM_FAILED_RANDOM_JOIN);
             peer.Send(writer, DeliveryMethod.ReliableOrdered);
         }
     }
