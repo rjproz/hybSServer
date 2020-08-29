@@ -55,12 +55,18 @@ public class LNSRoom : IDisposable
         byte code = instructionCode;
         if (code == LNSConstants.SERVER_EVT_LOCK_ROOM)
         {
-            isOpen = false;
+            if (from.id == masterClient.id)
+            {
+                isOpen = false;
+            }
             return;
         }
         else if (code == LNSConstants.SERVER_EVT_UNLOCK_ROOM)
         {
-            isOpen = true;
+            if (from.id == masterClient.id)
+            {
+                isOpen = true;
+            }
             return;
         }
         else if (code == LNSConstants.SERVER_EVT_RAW_DATA_TO_CLIENT)
