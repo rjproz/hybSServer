@@ -199,7 +199,7 @@ public class LNSServer : IDisposable
                     {
                            
                         string roomid =  reader.GetString();
-                         
+                        int maxPlayers = reader.GetInt();
                         lock (thelock)
                         {
                             if (!rooms.ContainsKey(roomid))
@@ -210,7 +210,7 @@ public class LNSServer : IDisposable
                                 room.primaryPlatform = (byte)platform;
 
                                 room.roomParameters = new LNSCreateRoomParameters();
-
+                                room.roomParameters.maxPlayers = maxPlayers;
                                 room.assocGame = game;
                                 rooms.Add(roomid, room);
                                 client.connectedRoom = room;
@@ -231,7 +231,8 @@ public class LNSServer : IDisposable
                                 {
                                     client.SendRoomFailedToJoinEvent(ROOM_FAILURE_CODE.ROOM_LOCKED); // Room join failed
                                 }
-                                else if (room.playerCount < room.roomParameters.maxPlayers)
+                               
+                                else if (room.playerCount >= room.roomParameters.maxPlayers)
                                 {
                                     client.SendRoomFailedToJoinEvent(ROOM_FAILURE_CODE.ROOM_FULL);
                                 }
