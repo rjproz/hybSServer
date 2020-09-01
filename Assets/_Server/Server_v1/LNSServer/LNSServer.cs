@@ -170,7 +170,7 @@ public class LNSServer : IDisposable
                         lock (thelock)
                         {
                            
-                            if (rooms.ContainsKey(roomid))
+                            if (rooms.ContainsKey(roomid.ToLower()))
                             {
                                 client.SendFailedToCreateRoomEvent(ROOM_FAILURE_CODE.ROOM_ALREADY_EXIST); //: Room creation failed
                             }
@@ -187,7 +187,7 @@ public class LNSServer : IDisposable
 
 
                                 room.assocGame = game;
-                                rooms.Add(roomid, room);
+                                rooms.Add(roomid.ToLower(), room);
                                 client.connectedRoom = room;
                                 client.SendRoomCreatedEvent(); //: Room created 
                                 room.AddPlayer(client);
@@ -202,7 +202,7 @@ public class LNSServer : IDisposable
                         int maxPlayers = reader.GetInt();
                         lock (thelock)
                         {
-                            if (!rooms.ContainsKey(roomid))
+                            if (!rooms.ContainsKey(roomid.ToLower()))
                             {
                                 LNSRoom room = new LNSRoom(roomid);
                                 room.gameKey = gameKey;
@@ -212,7 +212,7 @@ public class LNSServer : IDisposable
                                 room.roomParameters = new LNSCreateRoomParameters();
                                 room.roomParameters.maxPlayers = maxPlayers;
                                 room.assocGame = game;
-                                rooms.Add(roomid, room);
+                                rooms.Add(roomid.ToLower(), room);
                                 client.connectedRoom = room;
                                 client.SendRoomCreatedEvent();  //: Room created Event
                                 room.AddPlayer(client);
@@ -222,7 +222,7 @@ public class LNSServer : IDisposable
                             else
                             {
 
-                                LNSRoom room = rooms[roomid];
+                                LNSRoom room = rooms[roomid.ToLower()];
                                 if (room.gameVersion != client.gameVersion)
                                 {
                                     client.SendRoomFailedToJoinEvent(ROOM_FAILURE_CODE.VERSION_MISMATCH);
@@ -263,9 +263,9 @@ public class LNSServer : IDisposable
                           
                         lock (thelock)
                         {
-                            if (rooms.ContainsKey(roomid))
+                            if (rooms.ContainsKey(roomid.ToLower()))
                             {
-                                LNSRoom room = rooms[roomid];
+                                LNSRoom room = rooms[roomid.ToLower()];
 
                                 if (room.gameVersion != client.gameVersion)
                                 {
@@ -332,15 +332,14 @@ public class LNSServer : IDisposable
                     }
                     else if (instruction == LNSConstants.SERVER_EVT_REJOIN_ROOM)
                     {
-                          
-                        string roomid =  reader.GetString();
 
-                       
+                        string roomid = reader.GetString();
+
                         lock (thelock)
                         {
-                            if (rooms.ContainsKey(roomid))
+                            if (rooms.ContainsKey(roomid.ToLower()))
                             {
-                                LNSRoom room = rooms[roomid];
+                                LNSRoom room = rooms[roomid.ToLower()];
 
                                 if (room.playerCount >= room.roomParameters.maxPlayers)
                                 {
@@ -355,7 +354,7 @@ public class LNSServer : IDisposable
                                     client.connectedRoom = room;
                                     client.SendRoomReJoinedEvent(); //: Room ReJoined
                                     room.AddPlayer(client);
-                                    
+
                                 }
                             }
                             else
@@ -365,10 +364,49 @@ public class LNSServer : IDisposable
 
                         }
                     }
+                    else if (instruction == LNSConstants.SERVER_EVT_FETCH_ROOM_LIST)
+                    {
+                        LNSJoinRoomFilter filter = LNSJoinRoomFilter.FromReader(reader);
 
+                        lock (thelock)
+                        {
+                            LNSRoomList roomList = new LNSRoomList();
+                            int counter = 0;
+                            foreach (var roomKV in rooms)
+                            {
+                                LNSRoom room = roomKV.Value;
+                                //Debug.Log("is room param null " + (room.roomParameters == null));
+                                if (room.roomParameters.isPublic && room.gameVersion == client.gameVersion && room.isOpen && room.playerCount < room.roomParameters.maxPlayers)
+                                {
+                                    if (filter == null || room.IsFilterMatch(filter))
+                                    {
+                                        string roomid = room.id;
+                                        bool roomHasPassword = room.hasPassword;
+                                        int currentPlayerCount = room.playerCount;
+                                        int maxPlayers = room.roomParameters.maxPlayers;
 
-                    
+                                        LNSRoomList.RoomData roomData = new LNSRoomList.RoomData();
+                                        roomData.id = roomid;
+                                        roomData.hasPassword = roomHasPassword;
+                                        roomData.playerCount = currentPlayerCount;
+                                        roomData.maxPlayers = maxPlayers;
+                                        roomList.list.Add(roomData);
+                                        counter++;
+                                        if(counter >= 100)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                           
+                            client.SendRoomList(roomList);
+                            roomList.list = null;
+                            roomList = null;
 
+                        }
+                    }
+                   
                 }
                 else
                 {

@@ -1,6 +1,7 @@
 ﻿using System;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using UnityEngine;
 
 public class LNSClient : IDisposable
 {
@@ -136,4 +137,15 @@ public class LNSClient : IDisposable
         connectedRoom = null;
     }
 
+    public void SendRoomList(LNSRoomList roomList)
+    {
+        lock (thelock)
+        {
+            NetDataWriter _writer = new NetDataWriter();
+            _writer.Put(LNSConstants.CLIENT_EVT_ROOM_LIST);
+            _writer.Put(UnityEngine.JsonUtility.ToJson(roomList));
+            peer.Send(_writer, DeliveryMethod.ReliableOrdered);
+            _writer = null;
+        }
+    }
 }
