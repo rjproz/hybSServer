@@ -26,9 +26,9 @@ public class LNSGame : IDisposable
     {
         lock (assocServer.thelock)
         {
-            if (rooms.ContainsKey(room.id))
+            if (rooms.ContainsKey(room.id.ToLower()))
             {
-                rooms.Remove(room.id);
+                rooms.Remove(room.id.ToLower());
                 room = null;
             }
         }

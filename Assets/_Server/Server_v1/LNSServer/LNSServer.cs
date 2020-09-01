@@ -18,16 +18,30 @@ public class LNSServer : IDisposable
     public object thelock = new object();
 
     private bool disposed;
+
+
+    string logFilePath;
     public LNSServer(int port,string key)
     {
         this.port = port;
         this.key = key;
+        logFilePath = string.Format("Server_LOG_{0}.txt", this.port);
     }
 
     ~ LNSServer()
     {
         Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    public void Log(string data)
+    {
+        System.IO.File.AppendAllText(logFilePath, System.DateTime.Now+"\n"+data+"\n\n");
+    }
+
+    public void Log(string data,LNSClient client)
+    {
+        System.IO.File.AppendAllText(logFilePath, System.DateTime.Now + "\n" + data + string.Format(" by {0} {1} {2} {3}", client.gameKey, client.displayname, client.platform, client.id) +  "\n\n");
     }
 
     public void Start()
@@ -63,8 +77,10 @@ public class LNSServer : IDisposable
                             string displayName = request.Data.GetString();
                             string gameKey = request.Data.GetString();
                             string version = request.Data.GetString();
-                            CLIENT_PLATFORM platform = (CLIENT_PLATFORM)request.Data.GetByte();
 
+                            
+                            CLIENT_PLATFORM platform = (CLIENT_PLATFORM)request.Data.GetByte();
+                  
 
                             if (string.IsNullOrEmpty(gameKey) || !gameKey.Contains("hybriona") || string.IsNullOrEmpty(userid))
                             {
@@ -100,6 +116,8 @@ public class LNSServer : IDisposable
                                 client.platform = platform;
                                 connectedClientIds.Add(userid);
                                 Debug.Log("Connected : " + peer.Id + " | Total clients: " + clients.Count);
+
+                                Log(string.Format("Connected {0} {1} {2} {3}", gameKey, displayName, platform, userid));
                             }
 
                         }
@@ -191,7 +209,9 @@ public class LNSServer : IDisposable
                                 client.connectedRoom = room;
                                 client.SendRoomCreatedEvent(); //: Room created 
                                 room.AddPlayer(client);
-                               
+
+                                Log("Room created " + room.id, client);
+
                             }
                         }
                     }
@@ -216,7 +236,8 @@ public class LNSServer : IDisposable
                                 client.connectedRoom = room;
                                 client.SendRoomCreatedEvent();  //: Room created Event
                                 room.AddPlayer(client);
-                               
+
+                                Log("Room created " + room.id, client);
 
                             }
                             else
@@ -243,7 +264,9 @@ public class LNSServer : IDisposable
                                     client.SendRoomJoinedEvent();//: Room joined
                                     room.AddPlayer(client);
 
-                                    
+                                    Log("Room joined " + room.id, client);
+
+
                                 }
                             }
                         }
@@ -289,7 +312,9 @@ public class LNSServer : IDisposable
                                     client.connectedRoom = room;
                                     client.SendRoomJoinedEvent(); //: Room Joined
                                     room.AddPlayer(client);
-                                    
+
+                                    Log("Room joined " + room.id, client);
+
                                 }
                             }
                             else
@@ -317,6 +342,9 @@ public class LNSServer : IDisposable
                                         client.connectedRoom = room;
                                         client.SendRoomJoinedEvent(); //: Room Joined
                                         room.AddPlayer(client);
+
+                                        Log("Room random joined " + room.id, client);
+
                                         found = true;
                                         break;
                                     }
@@ -354,6 +382,7 @@ public class LNSServer : IDisposable
                                     client.connectedRoom = room;
                                     client.SendRoomReJoinedEvent(); //: Room ReJoined
                                     room.AddPlayer(client);
+                                    Log("Room rejoined " + room.id, client);
 
                                 }
                             }
