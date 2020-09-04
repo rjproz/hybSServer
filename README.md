@@ -1,6 +1,6 @@
 # hybSServer: Simple Multiplayer Server for Unity
 
-The the server is being build using LiteNetLib. RevenantX is the creator of LiteNetLib.
+The server is being build using LiteNetLib. @RevenantX is the creator of LiteNetLib.
 
 ## Linux Usage
 
