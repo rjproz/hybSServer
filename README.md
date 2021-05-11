@@ -13,17 +13,17 @@ Also, **hybSClient** repo can be found [here](https://github.com/rjproz/hybSClie
 ### Linux Usage
 
 ```
-./<linux_build_name>/hybsserver.x86_64 -gameserverport <port> -statserverport <port> -serverkey <port>
+./<linux_build_name>/hybsserver.x86_64 -gameserverport <port> -statserverport <port> -serverkey <key>
 ```
 
 ### Windows Usage
 
 ```
-./<hybsserver_win>/HybSServer.exe -gameserverport <port> -statserverport <port> -serverkey <port>
+./<hybsserver_win>/HybSServer.exe -gameserverport <port> -statserverport <port> -serverkey <key>
 ```  
 
 ### Mac Usage
 
 ```
-<mac_app_name>.app/Contents/MacOS/hybsserver_mac -gameserverport <port> -statserverport <port> -serverkey <port>
+<mac_app_name>.app/Contents/MacOS/hybsserver_mac -gameserverport <port> -statserverport <port> -serverkey <key>
 ``` 
