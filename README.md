@@ -2,6 +2,8 @@
 
 The server is being build using [LiteNetLib](https://github.com/RevenantX/LiteNetLib). 
 
+Also, **hybSClient** repo can be found [here](https://github.com/rjproz/hybSClient)
+
 ## Features
 1. Server key to avoid unauthorized clients
 2. Theoretically, Unlimited Games and unlimited rooms in one server instance
