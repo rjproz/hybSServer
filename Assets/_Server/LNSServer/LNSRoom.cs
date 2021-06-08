@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Threading;
 using LiteNetLib;
 using LiteNetLib.Utils;
-
+using UnityEngine;
 public class LNSRoom : IDisposable
 {
     public string id { get; set; }
     public string gameKey { get; set; }
     public string gameVersion { get; set; }
     public byte primaryPlatform { get; set; }
+    
     public LNSCreateRoomParameters roomParameters { get; set; }
     public int playerCount
     {
@@ -35,7 +36,10 @@ public class LNSRoom : IDisposable
     
     public LNSClient masterClient { get; set; }
     public NetDataWriter writer { get; set; }
-    
+
+    private QuadTree<LNSClient> quadTree;
+    private List<LNSClient> quadTreeSearchResults = new List<LNSClient>();
+
     private object thelock = new object();
     public LNSRoom(string id)
     {
@@ -48,6 +52,17 @@ public class LNSRoom : IDisposable
     {
         Dispose();
         GC.SuppressFinalize(this);
+    }
+
+
+    public void Prepare()
+    {
+        if(roomParameters.isQuadTreeAllowed && quadTree == null)
+        {
+            quadTree = new QuadTree<LNSClient>(roomParameters.maxPlayers * 10, roomParameters.quadTreeBounds);
+            
+        }
+        
     }
 
     public void ProcessReceivedData(LNSClient from,byte instructionCode,NetPacketReader reader, DeliveryMethod deliveryMethod)
@@ -77,18 +92,45 @@ public class LNSRoom : IDisposable
             {
                 for (int i = 0; i < clients.Count; i++)
                 {
-                    if (clients[i].id == targetid)
-                    {
-                        writer.Reset();
-                        writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                        writer.Put(from.id);
-                        writer.Put(reader.GetRemainingBytes());
-                        clients[i].peer.Send(writer, deliveryMethod);
-                        break;
-                    }
+                    var targetClient = clients.Find(client => client.id == targetid);
+                    writer.Reset();
+                    writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
+                    writer.Put(from.id);
+                    writer.Put(reader.GetRemainingBytes());
+                    targetClient.peer.Send(writer, deliveryMethod);
                 }
             }
             
+        }
+        else if (code == LNSConstants.SERVER_EVT_RAW_DATA_TO_NEARBY_CLIENTS)
+        {
+         
+            if (roomParameters.isQuadTreeAllowed)
+            {
+
+                
+                Rect searchRect = new Rect(reader.GetFloat(), reader.GetFloat(), reader.GetFloat(), reader.GetFloat());
+                from.position = searchRect.center;
+               
+                lock (thelock)
+                {
+                    quadTreeSearchResults.Clear();
+                    quadTree.RetrieveObjectsInAreaNoAlloc(searchRect, ref quadTreeSearchResults);
+                    //Debug.LogFormat("From {0} - Search Rect {1},{2} {3},{4} - Found: {5}", from.id, searchRect.center.x, searchRect.center.x, searchRect.width, searchRect.height, quadTreeSearchResults.Count);
+                    writer.Reset();
+                    writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
+                    writer.Put(from.id);
+                    writer.Put(reader.GetRemainingBytes());
+                    for (int i = 0; i < quadTreeSearchResults.Count; i++)
+                    {
+                        if (quadTreeSearchResults[i].networkid != from.networkid)
+                        {
+                            quadTreeSearchResults[i].peer.Send(writer, deliveryMethod);
+                        }
+                    }
+                }
+            }
+
         }
         else if(code == LNSConstants.SERVER_EVT_RAW_DATA_CACHE)
         {
@@ -141,7 +183,10 @@ public class LNSRoom : IDisposable
     {
         lock(thelock)
         {
-           
+            if (roomParameters.isQuadTreeAllowed)
+            {
+                quadTree.Insert(client);
+            }
             clients.Add(client);
             if (disconnectedClients.Contains(client.id))
             {
@@ -190,6 +235,10 @@ public class LNSRoom : IDisposable
         string clientid = client.id;
         lock (thelock)
         {
+            if (roomParameters.isQuadTreeAllowed)
+            {
+                quadTree.Remove(client);
+            }
             clients.Remove(client);
             if (!disconnectedClients.Contains(clientid))
             {
@@ -197,25 +246,26 @@ public class LNSRoom : IDisposable
             }
             if (clients.Count == 0)
             {
-                new Thread(() =>
+                if (clients.Count <= 0)
                 {
-                    try
-                    {
-                        for (int i = 0; i < 10; i++)
-                        {
-                            if (clients.Count > 0) // check if someone rejoined
-                            {
-                                return;
-                            }
-                            Thread.Sleep(5000);
-                        }
-                    }
-                    catch { }
-                    if (clients.Count <= 0)
-                    {
-                        assocGame.RemoveRoom(this); // Destroy room
-                    }
-                }).Start(); ;
+                    assocGame.RemoveRoom(this); // Destroy room
+                }
+                //new Thread(() =>
+                //{
+                //    try
+                //    {
+                //        for (int i = 0; i < 10; i++)
+                //        {
+                //            if (clients.Count > 0) // check if someone rejoined
+                //            {
+                //                return;
+                //            }
+                //            Thread.Sleep(5000);
+                //        }
+                //    }
+                //    catch { }
+                    
+                //}).Start(); ;
                 
                 return;
             }

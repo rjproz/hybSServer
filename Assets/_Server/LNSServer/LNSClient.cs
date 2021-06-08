@@ -3,10 +3,10 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using UnityEngine;
 
-public class LNSClient : IDisposable
+public class LNSClient : IDisposable,IQuadTreeObject
 {
     
-   
+    
     public int networkid { get; set; }
     public string id { get; set; }
     public string displayname { get; set; }
@@ -18,7 +18,7 @@ public class LNSClient : IDisposable
     public NetPeer peer { get; set; }
     public LNSRoom connectedRoom { get; set; }
     public NetDataWriter writer { get; set; }
-
+    public Vector2 position { get; set; } //Position in Quad tree
     private object thelock = new object();
     public LNSClient(NetPeer peer)
     {
@@ -33,8 +33,10 @@ public class LNSClient : IDisposable
         GC.SuppressFinalize(this);
     }
 
-
-   
+	public Vector2 GetPosition()
+    {
+        return position;
+    }
 
     public void SendDisconnectEvent(bool leftroom)
     {

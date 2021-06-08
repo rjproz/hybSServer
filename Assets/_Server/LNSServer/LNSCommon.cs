@@ -19,6 +19,7 @@ public class LNSConstants
     public const byte SERVER_EVT_RAW_DATA_TO_CLIENT = 64;
     public const byte SERVER_EVT_REMOVE_CLIENT_CACHE = 65;
     public const byte SERVER_EVT_REMOVE_ALL_CACHE = 66;
+    public const byte SERVER_EVT_RAW_DATA_TO_NEARBY_CLIENTS = 67;
 
 
 

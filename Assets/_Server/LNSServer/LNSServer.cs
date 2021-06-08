@@ -187,7 +187,7 @@ public class LNSServer : IDisposable
                     Dictionary<string,LNSRoom> rooms = game.rooms;
                     if (instruction == LNSConstants.SERVER_EVT_CREATE_ROOM)
                     {
-                        Debug.Log("Create room");
+                        //Debug.Log("Create room");
                         string roomid = reader.GetString();
                         LNSCreateRoomParameters roomParameters = LNSCreateRoomParameters.FromReader(reader);
                         lock (thelock)
@@ -210,10 +210,13 @@ public class LNSServer : IDisposable
 
 
                                 room.assocGame = game;
+                                room.Prepare();
+
                                 rooms.Add(roomid.ToLower(), room);
                                 client.connectedRoom = room;
                                 client.SendRoomCreatedEvent(); //: Room created 
                                 room.AddPlayer(client);
+                                
 
                                 Log("Room created " + room.id, client);
 
@@ -237,6 +240,7 @@ public class LNSServer : IDisposable
                                 room.roomParameters = new LNSCreateRoomParameters();
                                 room.roomParameters.maxPlayers = maxPlayers;
                                 room.assocGame = game;
+                                room.Prepare();
                                 rooms.Add(roomid.ToLower(), room);
                                 client.connectedRoom = room;
                                 client.SendRoomCreatedEvent();  //: Room created Event

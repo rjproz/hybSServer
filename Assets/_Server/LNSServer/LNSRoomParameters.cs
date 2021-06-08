@@ -10,7 +10,18 @@ public class LNSCreateRoomParameters
     public bool isPublic { get; set; } = true;
     public string password { get; set; } = null;
     public int maxPlayers { get; set; } = 10;
+    public bool isQuadTreeAllowed { get; set; } = false;
+    public Rect quadTreeBounds { get; set; }
+    public int maxPlayersInQuadCell { get; set; } = 5;
     public LNSJoinRoomFilter filters { get; set; }
+
+
+    public void EnableQuadTreeCellOptimization(Rect quadTreeBounds, int maxPlayersInQuadCell)
+    {
+        this.isQuadTreeAllowed = true;
+        this.quadTreeBounds = quadTreeBounds;
+        this.maxPlayersInQuadCell = maxPlayersInQuadCell;
+    }
 
     public void AppendToWriter(NetDataWriter writer)
     {
@@ -35,6 +46,15 @@ public class LNSCreateRoomParameters
             writer.Put((byte)0);
         }
         writer.Put(maxPlayers);
+        writer.Put(isQuadTreeAllowed);
+        if(isQuadTreeAllowed)
+        {
+            writer.Put(quadTreeBounds.x);
+            writer.Put(quadTreeBounds.y);
+            writer.Put(quadTreeBounds.width);
+            writer.Put(quadTreeBounds.height);
+        }
+        writer.Put(maxPlayersInQuadCell);
     }
 
     public static LNSCreateRoomParameters FromReader(NetPacketReader reader)
@@ -42,17 +62,31 @@ public class LNSCreateRoomParameters
         if (reader.AvailableBytes > 0)
         {
             LNSCreateRoomParameters o = new LNSCreateRoomParameters();
-            o.isPublic = reader.GetBool();
-            if (reader.GetBool())
+            try
             {
-                o.password = reader.GetString();
+                o.isPublic = reader.GetBool();
+                if (reader.GetBool())
+                {
+                    o.password = reader.GetString();
+                }
+
+
+                o.filters = LNSJoinRoomFilter.FromReader(reader);
+                o.maxPlayers = reader.GetInt();
+                o.isQuadTreeAllowed = reader.GetBool();
+                if (o.isQuadTreeAllowed)
+                {
+                    Rect bounds = new Rect(reader.GetFloat(), reader.GetFloat(), reader.GetFloat(), reader.GetFloat());
+                    //bounds.center = new Vector2, reader.GetFloat());
+                  
+                    o.quadTreeBounds = bounds;
+                    o.maxPlayersInQuadCell = reader.GetInt();
+                }
             }
-
-
-            o.filters = LNSJoinRoomFilter.FromReader(reader);
-
-
-            o.maxPlayers = reader.GetInt();
+            catch
+            {
+                o.isQuadTreeAllowed = false;
+            }
             return o;
 
         }
