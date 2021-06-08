@@ -9,6 +9,8 @@ public class LNSServer : IDisposable
 {
     public int port { get; private set; }
     public string key { get; private set; }
+    public int serverTick { get; private set; }
+    public int threadWaitMilliseconds { get; private set; }
 
     public Dictionary<int, LNSClient> clients = new Dictionary<int, LNSClient>();
     private List<string> connectedClientIds = new List<string>();
@@ -18,13 +20,16 @@ public class LNSServer : IDisposable
     public object thelock = new object();
 
     private bool disposed;
-
+    
 
     string logFilePath;
-    public LNSServer(int port,string key)
+    public LNSServer(int port,string key,int serverTick)
     {
         this.port = port;
         this.key = key;
+        this.serverTick = serverTick;
+
+        threadWaitMilliseconds =  Mathf.RoundToInt(1000f / (float)this.serverTick);
         logFilePath = string.Format("Server_LOG_{0}.txt", this.port);
     }
 
@@ -480,7 +485,7 @@ public class LNSServer : IDisposable
             while (true)
             {
                 server.PollEvents();
-                Thread.Sleep(15);
+                Thread.Sleep(threadWaitMilliseconds); // 30 times per second
             }
         }).Start();
     }

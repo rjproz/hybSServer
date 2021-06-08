@@ -8,6 +8,7 @@ public class LNSServerManager : MonoBehaviour
     private int gameServerPort = 10002;
     private int statsServerPort = 10001;
     private string serverKey = "demokey";
+    private int serverTick = 30;
     private LNSServer server_1;
     IEnumerator Start()
     {
@@ -52,6 +53,24 @@ public class LNSServerManager : MonoBehaviour
                     serverKey = commandLineArgs[i];
                 }
             }
+            else if (commandLineArgs[i].ToLower() == "-servertick")
+            {
+                i++;
+                if (i >= commandLineArgs.Length)
+                {
+                    LogCommandlineParamsError();
+                    yield break;
+                }
+                else
+                {
+                    if(!int.TryParse(commandLineArgs[i], out serverTick) || serverTick < 1 || serverTick > 120)
+                    {
+                        LogCommandlineParamsError();
+                        yield break;
+                    }
+                    
+                }
+            }
         }
 
         HttpServerForStats httpServerForStats = new HttpServerForStats();
@@ -59,10 +78,11 @@ public class LNSServerManager : MonoBehaviour
 
         
       
-        server_1 = new LNSServer(gameServerPort, serverKey);
+        server_1 = new LNSServer(gameServerPort, serverKey, serverTick);
         server_1.Start();
-        Debug.Log("Server key is "+ serverKey);
-
+        Debug.Log("\n\n");
+        Debug.Log("Server key is "+ server_1.key);
+        Debug.LogFormat("Server Tick is {0} i.e thread update every {1} ms" , server_1.serverTick, server_1.threadWaitMilliseconds);
         WaitForSeconds waitForSeconds = new WaitForSeconds(120);
         while (true)
         {
@@ -73,7 +93,7 @@ public class LNSServerManager : MonoBehaviour
 
     public void LogCommandlineParamsError()
     {
-        Debug.LogError("\n\n<server build file> -gameserverport <game port> -statsserverport <stat port> -serverkey <secure server key>\n\n");
+        Debug.LogError("\n\n<server build file> -gameserverport <game port> -statsserverport <stat port> -serverkey <secure server key> -servertick <server tick between 1-120>\n\n");
         Application.Quit();
     }
     public ServerStats GetData()
