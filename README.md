@@ -9,7 +9,7 @@ Also, **hybSClient** repo can be found [here](https://github.com/rjproz/hybSClie
 2. Theoretically, Unlimited Games and unlimited rooms in one server instance
 3. Both Reliable and UnReliable Events
 4. Room supports various parameters like game version, password, public/private mode and lock/unlock.
-
+5. 2D QuadTree optimization for partially authoritative MMO or Battle Royale
 ### Linux Usage
 
 ```
