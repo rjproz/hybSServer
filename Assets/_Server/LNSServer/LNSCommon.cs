@@ -28,6 +28,7 @@ public class LNSConstants
     public const byte CLIENT_EVT_ROOM_PLAYER_DISCONNECTED = 2;
     public const byte CLIENT_EVT_ROOM_MASTERCLIENT_CHANGED = 3;
     public const byte CLIENT_EVT_ROOM_DISCONNECTED = 4;
+    public const byte CLIENT_EVT_ROOM_CACHE_DATA = 5;
 
     public const byte CLIENT_EVT_ROOM_LIST = 9;
     public const byte CLIENT_EVT_ROOM_CREATED = 10;

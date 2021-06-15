@@ -10,6 +10,12 @@ public class LNSCreateRoomParameters
     public bool isPublic { get; set; } = true;
     public string password { get; set; } = null;
     public int maxPlayers { get; set; } = 10;
+
+    /// <summary>
+    /// Makes the room active for sometime (in minutes) even if there are no players in the rooms. Good for MMO and persistent worlds
+    /// </summary>
+    public long idleLife { get; set; } = 0;
+
     public bool isQuadTreeAllowed { get; set; } = false;
     public Rect quadTreeBounds { get; set; }
     public int maxPlayersInQuadCell { get; set; } = 5;
@@ -54,7 +60,8 @@ public class LNSCreateRoomParameters
             writer.Put(quadTreeBounds.width);
             writer.Put(quadTreeBounds.height);
         }
-        writer.Put(maxPlayersInQuadCell);
+
+        writer.Put(idleLife);
     }
 
     public static LNSCreateRoomParameters FromReader(NetPacketReader reader)
@@ -80,8 +87,8 @@ public class LNSCreateRoomParameters
                     //bounds.center = new Vector2, reader.GetFloat());
                   
                     o.quadTreeBounds = bounds;
-                    o.maxPlayersInQuadCell = reader.GetInt();
                 }
+                o.idleLife = reader.GetLong();
             }
             catch
             {

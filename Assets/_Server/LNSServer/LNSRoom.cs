@@ -10,7 +10,9 @@ public class LNSRoom : IDisposable
     public string gameKey { get; set; }
     public string gameVersion { get; set; }
     public byte primaryPlatform { get; set; }
-    
+   
+
+
     public LNSCreateRoomParameters roomParameters { get; set; }
     public int playerCount
     {
@@ -37,6 +39,8 @@ public class LNSRoom : IDisposable
     public LNSClient masterClient { get; set; }
     public NetDataWriter writer { get; set; }
 
+    private Dictionary<string, byte[]> persistentData = new Dictionary<string, byte[]>();
+
     private QuadTree<LNSClient> quadTree;
     private List<LNSClient> quadTreeSearchResults = new List<LNSClient>();
 
@@ -59,7 +63,7 @@ public class LNSRoom : IDisposable
     {
         if(roomParameters.isQuadTreeAllowed && quadTree == null)
         {
-            quadTree = new QuadTree<LNSClient>(roomParameters.maxPlayers * 10, roomParameters.quadTreeBounds);
+            quadTree = new QuadTree<LNSClient>(roomParameters.maxPlayers * 1000, roomParameters.quadTreeBounds);
             
         }
         
@@ -134,21 +138,36 @@ public class LNSRoom : IDisposable
         }
         else if(code == LNSConstants.SERVER_EVT_RAW_DATA_CACHE)
         {
-            /*
+            
             lock (thelock)
             {
-                writer.Reset();
-                writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                writer.Put(from.id);
-                writer.Put(reader.GetRemainingBytes());
-                for (int i = 0; i < clients.Count; i++)
+                string key = reader.GetString();
+                byte[] value = reader.GetRemainingBytes();
+                if (value.Length <= 1000)
                 {
-                    if (clients[i].networkid != from.networkid)
+
+
+                    if (persistentData.ContainsKey(key))
                     {
-                        clients[i].peer.Send(writer, deliveryMethod);
+                        persistentData[key] = value;
+                    }
+                    else
+                    {
+                        persistentData.Add(key, value);
+                    }
+
+                    writer.Reset();
+                    writer.Put(LNSConstants.CLIENT_EVT_ROOM_CACHE_DATA);
+                    writer.Put(key);
+                    writer.Put(value);
+
+
+                    for (int i = 0; i < clients.Count; i++)
+                    {
+                        clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
                     }
                 }
-            }*/
+            }
         }
         else
         {
@@ -224,6 +243,16 @@ public class LNSRoom : IDisposable
                 writer.Put(masterClient.id);
                 
                 client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
+
+                foreach(var cachedData in persistentData)
+                {
+                    writer.Reset();
+                    writer.Put(LNSConstants.CLIENT_EVT_ROOM_CACHE_DATA);
+                    writer.Put(cachedData.Key);
+                    writer.Put(cachedData.Value);
+
+                    client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                }
             }
         }
                
@@ -246,27 +275,27 @@ public class LNSRoom : IDisposable
             }
             if (clients.Count == 0)
             {
-                if (clients.Count <= 0)
+            
+                new Thread(() =>
                 {
-                    assocGame.RemoveRoom(this); // Destroy room
-                }
-                //new Thread(() =>
-                //{
-                //    try
-                //    {
-                //        for (int i = 0; i < 10; i++)
-                //        {
-                //            if (clients.Count > 0) // check if someone rejoined
-                //            {
-                //                return;
-                //            }
-                //            Thread.Sleep(5000);
-                //        }
-                //    }
-                //    catch { }
-                    
-                //}).Start(); ;
-                
+                    try
+                    {
+                        int waited = 0;
+                        while(waited < roomParameters.idleLife)
+                        {
+                            if (clients.Count > 0) // check if someone rejoined
+                            {
+                                return;
+                            }
+                            Thread.Sleep(1000);
+                            waited += 1;
+                        }
+                        assocGame.RemoveRoom(this);
+                    }
+                    catch { }
+
+                }).Start(); 
+
                 return;
             }
            
@@ -351,6 +380,12 @@ public class LNSRoom : IDisposable
         {
             writer.Reset();
             writer = null;
+        }
+
+        if(persistentData != null)
+        {
+            persistentData.Clear();
+            persistentData = null;
         }
     }
 

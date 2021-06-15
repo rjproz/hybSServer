@@ -170,7 +170,7 @@ public class LNSServer : IDisposable
                     string gameKey = client.gameKey;
                     string version = client.gameVersion;
                     CLIENT_PLATFORM platform = client.platform;
-
+                    
 
 
                     LNSGame game = null;
@@ -190,6 +190,7 @@ public class LNSServer : IDisposable
                         //Debug.Log("Create room");
                         string roomid = reader.GetString();
                         LNSCreateRoomParameters roomParameters = LNSCreateRoomParameters.FromReader(reader);
+  
                         lock (thelock)
                         {
                            
@@ -204,7 +205,6 @@ public class LNSServer : IDisposable
                                 room.gameKey = gameKey;
                                 room.gameVersion = version;
                                 room.primaryPlatform = (byte)platform;
-
                                 room.roomParameters = roomParameters;
                               
 
@@ -233,10 +233,10 @@ public class LNSServer : IDisposable
                             if (!rooms.ContainsKey(roomid.ToLower()))
                             {
                                 LNSRoom room = new LNSRoom(roomid);
+                               
                                 room.gameKey = gameKey;
                                 room.gameVersion = version;
                                 room.primaryPlatform = (byte)platform;
-
                                 room.roomParameters = new LNSCreateRoomParameters();
                                 room.roomParameters.maxPlayers = maxPlayers;
                                 room.assocGame = game;
