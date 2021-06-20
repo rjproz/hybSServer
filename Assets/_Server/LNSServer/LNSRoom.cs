@@ -74,7 +74,7 @@ public class LNSRoom : IDisposable
         byte code = instructionCode;
         if (code == LNSConstants.SERVER_EVT_LOCK_ROOM)
         {
-            if (from.id == masterClient.id)
+            if (from.networkid == masterClient.networkid)
             {
                 isOpen = false;
             }
@@ -82,7 +82,7 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_UNLOCK_ROOM)
         {
-            if (from.id == masterClient.id)
+            if (from.networkid == masterClient.networkid)
             {
                 isOpen = true;
             }
@@ -90,16 +90,16 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_RAW_DATA_TO_CLIENT)
         {
-            string targetid = reader.GetString();
+            int targetNetId = reader.GetInt();
 
             lock (thelock)
             {
-                for (int i = 0; i < clients.Count; i++)
+                var targetClient = clients.Find(client => client.networkid == targetNetId);
+                if (targetClient != null)
                 {
-                    var targetClient = clients.Find(client => client.id == targetid);
                     writer.Reset();
                     writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                    writer.Put(from.id);
+                    writer.Put(from.networkid);
                     writer.Put(reader.GetRemainingBytes());
                     targetClient.peer.Send(writer, deliveryMethod);
                 }
@@ -123,7 +123,7 @@ public class LNSRoom : IDisposable
                     //Debug.LogFormat("From {0} - Search Rect {1},{2} {3},{4} - Found: {5}", from.id, searchRect.center.x, searchRect.center.x, searchRect.width, searchRect.height, quadTreeSearchResults.Count);
                     writer.Reset();
                     writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                    writer.Put(from.id);
+                    writer.Put(from.networkid);
                     writer.Put(reader.GetRemainingBytes());
                     for (int i = 0; i < quadTreeSearchResults.Count; i++)
                     {
@@ -176,7 +176,7 @@ public class LNSRoom : IDisposable
             {
                 writer.Reset();
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                writer.Put(from.id);
+                writer.Put(from.networkid);
                 writer.Put(reader.GetRemainingBytes());
                 for (int i = 0; i < clients.Count; i++)
                 {
