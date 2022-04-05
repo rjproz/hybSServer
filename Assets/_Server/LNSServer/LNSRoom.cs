@@ -183,6 +183,15 @@ public class LNSRoom : IDisposable
                     if (clients[i].networkid != from.networkid)
                     {
                         clients[i].peer.Send(writer, deliveryMethod);
+                        /*
+                        if (clients[i].peer.GetMaxSinglePacketSize(deliveryMethod) < writer.Length)
+                        {
+                            clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                        }
+                        else
+                        {
+                            clients[i].peer.Send(writer, deliveryMethod);
+                        }*/
                     }
                 }
             }
