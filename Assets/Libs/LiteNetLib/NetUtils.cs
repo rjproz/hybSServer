@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -31,11 +31,10 @@ namespace LiteNetLib
         {
             if(hostStr == "localhost")
                 return IPAddress.Loopback;
-            
-            IPAddress ipAddress;
-            if (!IPAddress.TryParse(hostStr, out ipAddress))
+
+            if (!IPAddress.TryParse(hostStr, out var ipAddress))
             {
-                if (NetSocket.IPv6Support)
+                if (NetManager.IPv6Support)
                     ipAddress = ResolveAddress(hostStr, AddressFamily.InterNetworkV6);
                 if (ipAddress == null)
                     ipAddress = ResolveAddress(hostStr, AddressFamily.InterNetwork);
@@ -48,7 +47,7 @@ namespace LiteNetLib
 
         public static IPAddress ResolveAddress(string hostStr, AddressFamily addressFamily)
         {
-            IPAddress[] addresses = ResolveAddresses(hostStr);
+            IPAddress[] addresses = Dns.GetHostEntry(hostStr).AddressList;
             foreach (IPAddress ip in addresses)
             {
                 if (ip.AddressFamily == addressFamily)
@@ -57,18 +56,6 @@ namespace LiteNetLib
                 }
             }
             return null;
-        }
-
-        public static IPAddress[] ResolveAddresses(string hostStr)
-        {
-#if NETSTANDARD || NETCOREAPP
-            var hostTask = Dns.GetHostEntryAsync(hostStr);
-            hostTask.GetAwaiter().GetResult();
-            var host = hostTask.Result;
-#else
-            var host = Dns.GetHostEntry(hostStr);
-#endif
-            return host.AddressList;
         }
 
         /// <summary>
@@ -97,7 +84,7 @@ namespace LiteNetLib
                 foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
                 {
                     //Skip loopback and disabled network interfaces
-                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback || 
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback ||
                         ni.OperationalStatus != OperationalStatus.Up)
                         continue;
 
@@ -115,23 +102,24 @@ namespace LiteNetLib
                             targetList.Add(address.ToString());
                     }
                 }
+
+	            //Fallback mode (unity android)
+	            if (targetList.Count == 0)
+	            {
+	                IPAddress[] addresses = Dns.GetHostEntry(Dns.GetHostName()).AddressList;
+	                foreach (IPAddress ip in addresses)
+	                {
+	                    if((ipv4 && ip.AddressFamily == AddressFamily.InterNetwork) ||
+	                       (ipv6 && ip.AddressFamily == AddressFamily.InterNetworkV6))
+	                        targetList.Add(ip.ToString());
+	                }
+	            }
             }
             catch
             {
                 //ignored
             }
 
-            //Fallback mode (unity android)
-            if (targetList.Count == 0)
-            {
-                IPAddress[] addresses = ResolveAddresses(Dns.GetHostName());
-                foreach (IPAddress ip in addresses)
-                {
-                    if((ipv4 && ip.AddressFamily == AddressFamily.InterNetwork) ||
-                       (ipv6 && ip.AddressFamily == AddressFamily.InterNetworkV6))
-                        targetList.Add(ip.ToString());
-                }
-            }
             if (targetList.Count == 0)
             {
                 if(ipv4)
@@ -162,7 +150,7 @@ namespace LiteNetLib
         // ===========================================
         internal static void PrintInterfaceInfos()
         {
-            NetDebug.WriteForce(NetLogLevel.Info, "IPv6Support: {0}", NetSocket.IPv6Support);
+            NetDebug.WriteForce(NetLogLevel.Info, $"IPv6Support: { NetManager.IPv6Support}");
             try
             {
                 foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
@@ -174,24 +162,29 @@ namespace LiteNetLib
                         {
                             NetDebug.WriteForce(
                                 NetLogLevel.Info,
-                                "Interface: {0}, Type: {1}, Ip: {2}, OpStatus: {3}",
-                                ni.Name,
-                                ni.NetworkInterfaceType.ToString(),
-                                ip.Address.ToString(),
-                                ni.OperationalStatus.ToString());
+                                $"Interface: {ni.Name}, Type: {ni.NetworkInterfaceType}, Ip: {ip.Address}, OpStatus: {ni.OperationalStatus}");
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                NetDebug.WriteForce(NetLogLevel.Info, "Error while getting interface infos: {0}", e.ToString());
+                NetDebug.WriteForce(NetLogLevel.Info, $"Error while getting interface infos: {e}");
             }
         }
 
         internal static int RelativeSequenceNumber(int number, int expected)
         {
             return (number - expected + NetConstants.MaxSequence + NetConstants.HalfMaxSequence) % NetConstants.MaxSequence - NetConstants.HalfMaxSequence;
+        }
+
+        internal static T[] AllocatePinnedUninitializedArray<T>(int count) where T : unmanaged
+        {
+#if NET5_0_OR_GREATER || NET5_0
+            return GC.AllocateUninitializedArray<T>(count, true);
+#else
+            return new T[count];
+#endif
         }
     }
 }

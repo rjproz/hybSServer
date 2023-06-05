@@ -36,3 +36,15 @@ Update Mode: updateDependencies
 The following packages were updated:
   com.unity.ide.vscode from version 1.2.1 to 1.2.3
   com.unity.test-framework from version 1.1.16 to 1.1.18
+
+=== Mon Jun  5 19:11:59 2023
+
+Packages were changed.
+Update Mode: updateDependencies
+
+The following packages were added:
+  com.unity.ide.visualstudio@2.0.17
+The following packages were updated:
+  com.unity.ide.rider from version 1.1.4 to 3.0.18
+  com.unity.ide.vscode from version 1.2.3 to 1.2.5
+  com.unity.test-framework from version 1.1.18 to 1.1.31
