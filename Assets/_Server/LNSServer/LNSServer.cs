@@ -146,19 +146,21 @@ public class LNSServer : IDisposable
             //    {
             //        try
             //        {
-                                           
-                       
+
+
             //        }
             //        catch(System.Exception ex)
             //        {
             //            Debug.LogError(ex.Message + " - "+ex.StackTrace);
             //        }
             //    }
-               
-             
+
+
             //};
 
-            listener.NetworkReceiveEvent += (NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod) =>
+           
+
+            listener.NetworkReceiveEvent += (NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod) =>
             {
                 int peerId = peer.Id;
                 LNSClient client = clients[peerId];
