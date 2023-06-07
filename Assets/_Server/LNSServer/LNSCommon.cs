@@ -10,7 +10,8 @@ public class LNSConstants
     public const byte SERVER_EVT_LEAVE_ROOM = 53;
     public const byte SERVER_EVT_REJOIN_ROOM = 54;
     public const byte SERVER_EVT_JOIN_RANDOM_ROOM = 55;
-    
+    public const byte SERVER_EVT_MAKE_ME_MASTERCLIENT = 56;
+
 
     public const byte SERVER_EVT_LOCK_ROOM = 60;
     public const byte SERVER_EVT_UNLOCK_ROOM = 61;
