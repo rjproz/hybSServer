@@ -1,0 +1,15 @@
+16-06-2023 22:24:35
+Connected hybriona.persistent_world  UNITY_EDITOR D4755905-D65C-5545-AB6D-1D7E88913030True
+
+16-06-2023 22:24:35
+Room created default by hybriona.persistent_world  UNITY_EDITOR D4755905-D65C-5545-AB6D-1D7E88913030True
+
+16-06-2023 22:37:24
+Connected hybriona.persistent_world  UNITY_EDITOR D4755905-D65C-5545-AB6D-1D7E88913030True
+
+16-06-2023 22:37:24
+Room created default by hybriona.persistent_world  UNITY_EDITOR D4755905-D65C-5545-AB6D-1D7E88913030True
+
+16-06-2023 22:38:58
+Connected hybriona.persistent_world  UNITY_EDITOR D4755905-D65C-5545-AB6D-1D7E88913030True
+
