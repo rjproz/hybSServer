@@ -217,7 +217,7 @@ public class LNSServer : IDisposable
                                 client.gameVersion = version;
                                 client.platform = platform;
                                 connectedClientIds.Add(userid);
-                                Debug.Log("Connected : " + peer.Id + " | Total clients: " + clients.Count);
+                                Debug.Log("Connected : " + client.networkid + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
 
                                 Log(string.Format("Connected {0} {1} {2} {3}", gameKey, displayName, platform, userid));
                             }
