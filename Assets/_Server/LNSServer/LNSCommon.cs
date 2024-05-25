@@ -10,7 +10,9 @@ public class LNSConstants
     public const byte SERVER_EVT_LEAVE_ROOM = 53;
     public const byte SERVER_EVT_REJOIN_ROOM = 54;
     public const byte SERVER_EVT_JOIN_RANDOM_ROOM = 55;
-    
+    public const byte SERVER_EVT_MAKE_ME_MASTERCLIENT = 56;
+    public const byte SERVER_EVT_ROOM_EXIST_QUERY = 57;
+
 
     public const byte SERVER_EVT_LOCK_ROOM = 60;
     public const byte SERVER_EVT_UNLOCK_ROOM = 61;
@@ -38,6 +40,7 @@ public class LNSConstants
     public const byte CLIENT_EVT_ROOM_REJOINED = 14;
     public const byte CLIENT_EVT_ROOM_FAILED_REJOIN = 15;
     public const byte CLIENT_EVT_ROOM_FAILED_RANDOM_JOIN = 16;
+    public const byte CLIENT_EVT_ROOM_EXISTS_RESPONSE = 17;
 
     public const byte CLIENT_EVT_SERVER_EXECEPTION = 91;
     public const byte CLIENT_EVT_UNAUTHORIZED_CONNECTION = 92;

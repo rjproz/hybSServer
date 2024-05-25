@@ -72,7 +72,12 @@ public class LNSRoom : IDisposable
     public void ProcessReceivedData(LNSClient from,byte instructionCode,NetPacketReader reader, DeliveryMethod deliveryMethod)
     {
         byte code = instructionCode;
-        if (code == LNSConstants.SERVER_EVT_LOCK_ROOM)
+        if(code == LNSConstants.SERVER_EVT_MAKE_ME_MASTERCLIENT)
+        {
+            masterClient = from;
+            SendMasterPlayerChangedEvent();
+        }
+        else if (code == LNSConstants.SERVER_EVT_LOCK_ROOM)
         {
             if (from.networkid == masterClient.networkid)
             {

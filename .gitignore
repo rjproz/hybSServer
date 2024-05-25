@@ -3,6 +3,7 @@
 [Bb]uild/
 [Bb]uilds/
 [Ll]ibrary/*
+[Ll]ogs/*
 Ignore/*
 Assets/_HappyGamesApp/Delete/*
 Assets/AssetStoreTools*

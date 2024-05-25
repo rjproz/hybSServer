@@ -150,4 +150,16 @@ public class LNSClient : IDisposable,IQuadTreeObject
             _writer = null;
         }
     }
+
+    public void SendRoomExistResponse(string roomid, bool exists)
+    {
+        lock (thelock)
+        {
+            writer.Reset();
+            writer.Put(LNSConstants.CLIENT_EVT_ROOM_EXISTS_RESPONSE);
+            writer.Put(roomid);
+            writer.Put(exists);
+            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+        }
+    }
 }
