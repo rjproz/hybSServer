@@ -69,7 +69,7 @@ public class LNSRoom : IDisposable
         
     }
 
-    public void ProcessReceivedData(LNSClient from,byte instructionCode,NetPacketReader reader, DeliveryMethod deliveryMethod)
+    public void ProcessReceivedData(LNSClient from,byte instructionCode,LNSReader reader, DeliveryMethod deliveryMethod)
     {
         byte code = instructionCode;
         if(code == LNSConstants.SERVER_EVT_MAKE_ME_MASTERCLIENT)
@@ -79,7 +79,7 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_LOCK_ROOM)
         {
-            if (from.networkid == masterClient.networkid)
+            if (from.id == masterClient.id)
             {
                 isOpen = false;
             }
@@ -87,7 +87,7 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_UNLOCK_ROOM)
         {
-            if (from.networkid == masterClient.networkid)
+            if (from.id == masterClient.id)
             {
                 isOpen = true;
             }
@@ -95,18 +95,25 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_RAW_DATA_TO_CLIENT)
         {
-            int targetNetId = reader.GetInt();
+            string targetId = reader.GetString();
 
             lock (thelock)
             {
-                var targetClient = clients.Find(client => client.networkid == targetNetId);
+                var targetClient = clients.Find(client => client.id == targetId);
                 if (targetClient != null)
                 {
                     writer.Reset();
                     writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                    writer.Put(from.networkid);
+                    writer.Put(from.id);
                     writer.Put(reader.GetRemainingBytes());
-                    targetClient.peer.Send(writer, deliveryMethod);
+                    if (targetClient.isWebGL)
+                    {
+                        LNSServer.webSocketServer.SendOne(targetClient.networkid, new ArraySegment<byte>(writer.Data,0, writer.Length));
+                    }
+                    else
+                    {
+                        targetClient.peer.Send(writer, deliveryMethod);
+                    }
                 }
             }
             
@@ -128,13 +135,20 @@ public class LNSRoom : IDisposable
                     //Debug.LogFormat("From {0} - Search Rect {1},{2} {3},{4} - Found: {5}", from.id, searchRect.center.x, searchRect.center.x, searchRect.width, searchRect.height, quadTreeSearchResults.Count);
                     writer.Reset();
                     writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                    writer.Put(from.networkid);
+                    writer.Put(from.id);
                     writer.Put(reader.GetRemainingBytes());
                     for (int i = 0; i < quadTreeSearchResults.Count; i++)
                     {
-                        if (quadTreeSearchResults[i].networkid != from.networkid)
+                        if (quadTreeSearchResults[i].id != from.id)
                         {
-                            quadTreeSearchResults[i].peer.Send(writer, deliveryMethod);
+                            if (quadTreeSearchResults[i].isWebGL)
+                            {
+                                LNSServer.webSocketServer.SendOne(quadTreeSearchResults[i].networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                            }
+                            else
+                            {
+                                quadTreeSearchResults[i].peer.Send(writer, deliveryMethod);
+                            }
                         }
                     }
                 }
@@ -169,7 +183,14 @@ public class LNSRoom : IDisposable
 
                     for (int i = 0; i < clients.Count; i++)
                     {
-                        clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                        if (clients[i].isWebGL)
+                        {
+                            LNSServer.webSocketServer.SendOne(clients[i].networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                        }
+                        else
+                        {
+                            clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                        }
                     }
                 }
             }
@@ -181,13 +202,20 @@ public class LNSRoom : IDisposable
             {
                 writer.Reset();
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                writer.Put(from.networkid);
+                writer.Put(from.id);
                 writer.Put(reader.GetRemainingBytes());
                 for (int i = 0; i < clients.Count; i++)
                 {
-                    if (clients[i].networkid != from.networkid)
+                    if (clients[i].id != from.id)
                     {
-                        clients[i].peer.Send(writer, deliveryMethod);
+                        if (clients[i].isWebGL)
+                        {
+                            LNSServer.webSocketServer.SendOne(clients[i].networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                        }
+                        else
+                        {
+                            clients[i].peer.Send(writer, deliveryMethod);
+                        }
                         /*
                         if (clients[i].peer.GetMaxSinglePacketSize(deliveryMethod) < writer.Length)
                         {
@@ -248,15 +276,29 @@ public class LNSRoom : IDisposable
                         client.writer.Put((byte) clients[i].platform);
                         client.writer.Put(clients[i].networkid);
 
-                        client.peer.Send(client.writer, DeliveryMethod.ReliableOrdered);
+                        if (client.isWebGL)
+                        {
+                            LNSServer.webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(client.writer.Data, 0, client.writer.Length));
+                        }
+                        else
+                        {
+                            client.peer.Send(client.writer, DeliveryMethod.ReliableOrdered);
+                        }
                     }
                 }
 
                 writer.Reset();
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_MASTERCLIENT_CHANGED);
                 writer.Put(masterClient.id);
-                
-                client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
+
+                if (client.isWebGL)
+                {
+                    LNSServer.webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                }
+                else
+                {
+                    client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                }
 
                 foreach(var cachedData in persistentData)
                 {
@@ -265,7 +307,14 @@ public class LNSRoom : IDisposable
                     writer.Put(cachedData.Key);
                     writer.Put(cachedData.Value);
 
-                    client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                    if (client.isWebGL)
+                    {
+                        LNSServer.webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                    }
+                    else
+                    {
+                        client.peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                    }
                 }
             }
         }
@@ -342,9 +391,16 @@ public class LNSRoom : IDisposable
 
             for (int i=0;i<clients.Count;i++)
             {
-                if(clients[i].networkid != client.networkid)
+                if(clients[i].id != client.id)
                 {
-                    clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                    if (clients[i].isWebGL)
+                    {
+                        LNSServer.webSocketServer.SendOne(clients[i].networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                    }
+                    else
+                    {
+                        clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                    }
                 }
             }
         }
@@ -361,7 +417,14 @@ public class LNSRoom : IDisposable
 
             for (int i = 0; i < clients.Count; i++)
             {
-                clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                if (clients[i].isWebGL)
+                {
+                    LNSServer.webSocketServer.SendOne(clients[i].networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                }
+                else
+                {
+                    clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                }
             }
         }
     }
@@ -377,7 +440,14 @@ public class LNSRoom : IDisposable
 
             for (int i = 0; i < clients.Count; i++)
             {
-                clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                if (clients[i].isWebGL)
+                {
+                    LNSServer.webSocketServer.SendOne(clients[i].networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                }
+                else
+                {
+                    clients[i].peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                }
             }
         }
     }

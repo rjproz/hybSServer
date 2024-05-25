@@ -48,3 +48,15 @@ The following packages were updated:
   com.unity.ide.rider from version 1.1.4 to 3.0.18
   com.unity.ide.vscode from version 1.2.3 to 1.2.5
   com.unity.test-framework from version 1.1.18 to 1.1.31
+
+=== Sat May 25 14:07:24 2024
+
+Packages were changed.
+Update Mode: updateDependencies
+
+The following packages were added:
+  com.unity.ai.navigation@1.1.5
+The following packages were updated:
+  com.unity.ide.rider from version 3.0.18 to 3.0.28
+  com.unity.ide.visualstudio from version 2.0.17 to 2.0.22
+  com.unity.test-framework from version 1.1.31 to 1.1.33
