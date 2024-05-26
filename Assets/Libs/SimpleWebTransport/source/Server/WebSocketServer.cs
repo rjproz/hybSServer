@@ -83,7 +83,7 @@ namespace Mirror.SimpleWeb
                         //      and returns/disposes before sending message to queue
                         Connection conn = new Connection(client, AfterConnectionDisposed);
                         Log.Info($"A client connected {conn}");
-
+                        
                         // handshake needs its own thread as it needs to wait for message from client
                         Thread receiveThread = new Thread(() => HandshakeAndReceiveLoop(conn));
 

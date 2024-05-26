@@ -48,11 +48,22 @@ namespace Mirror.SimpleWeb
         /// </summary>
         public static bool TryRead(Stream stream, byte[] outBuffer, int outOffset, int length)
         {
+           
             try
             {
                 Read(stream, outBuffer, outOffset, length);
                 return true;
             }
+            catch(AggregateException err) //RJproz
+            {
+                foreach (var errInner in err.InnerExceptions)
+                {
+                    UnityEngine.Debug.LogError(errInner.InnerException.Message + " "+errInner.InnerException.StackTrace);
+                    //UnityEngine.Debug.LogError (errInner); //this will call ToString() on the inner execption and get you message, stacktrace and you could perhaps drill down further into the inner exception of it if necessary 
+                }
+                return false;
+            }
+            /*
             catch (ReadHelperException)
             {
                 return false;
@@ -65,7 +76,7 @@ namespace Mirror.SimpleWeb
             {
                 Log.Exception(e);
                 return false;
-            }
+            }*/
         }
 
         public static int? SafeReadTillMatch(Stream stream, byte[] outBuffer, int outOffset, int maxLength, byte[] endOfHeader)

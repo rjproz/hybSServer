@@ -57,13 +57,16 @@ public class LNSServer : IDisposable
         new Thread(() =>
         {
             var tcpConfig = new TcpConfig(true, 0, 0);
-            SslConfig sslConfig = new SslConfig(false,"","",System.Security.Authentication.SslProtocols.None);
-            
+            SslConfig sslConfig = new SslConfig(false, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
 
-            webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,300, sslConfig) ;
+            System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
            
+            webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
+
+            
             webSocketServer.onConnect += (connectionId)=> {
                 LNSClient client = null;
+                
                 if (!clients_webgl.ContainsKey(connectionId))
                 {
                     client = LNSClient.CreateWebGlClient();
@@ -75,11 +78,17 @@ public class LNSServer : IDisposable
                     client = clients_webgl[connectionId];
                     client.networkid = connectionId;
                 }
+                
+
+                //string msg = "I am RJproz\n\n";
+                
+                //webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(msg.ConvertToBytes()));
+                
             };
 
             webSocketServer.onData += (connectionId, data) =>
             {
-               
+                Debug.Log("data from webclient");
                 LNSClient client = clients_webgl[connectionId];
 
                 LNSReader reader = LNSReader.GetFromPool();
@@ -113,11 +122,14 @@ public class LNSServer : IDisposable
                 }
                 else
                 {
+                   
+                    //Debug.Log(data.ToArray().ConvertToString());
                     var instruction = reader.GetByte();
-                    OnDataRecieveProcess(client, instruction, reader);
+                    OnDataReceiveProcess(client, instruction, reader);
                 }
 
             };
+
 
             webSocketServer.onDisconnect += (connectionId) =>
             {
@@ -154,7 +166,7 @@ public class LNSServer : IDisposable
             Debug.Log("Server Started");
             listener.ConnectionRequestEvent += request =>
             {
-                Debug.Log("connection request recieved");
+                //Debug.Log("connection request recieved");
 
                 lock (thelock)
                 {
@@ -247,13 +259,14 @@ public class LNSServer : IDisposable
                 byte instruction = reader.GetByte();
 
                 LNSReader reader1 = LNSReader.GetFromPool();
-                reader1.SetSource(reader.RawData,reader.Position,reader.UserDataSize);
-                OnDataRecieveProcess(client, instruction, reader1,deliveryMethod);
+                reader1.SetSource( reader.RawData,reader.Position,reader.RawDataSize);
+                OnDataReceiveProcess(client, instruction, reader1,deliveryMethod);
                 
                 reader.Recycle();
 
 
             };
+
             listener.PeerDisconnectedEvent += (NetPeer peer, DisconnectInfo disconnectInfo) =>
             {
                 lock (thelock)
@@ -285,7 +298,7 @@ public class LNSServer : IDisposable
     }
 
 
-    public void OnDataRecieveProcess(LNSClient client,byte instruction,LNSReader reader, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
+    public void OnDataReceiveProcess(LNSClient client,byte instruction,LNSReader reader, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
     {
         if (client.connectedRoom == null)
         {
@@ -348,7 +361,7 @@ public class LNSServer : IDisposable
             }
             else if (instruction == LNSConstants.SERVER_EVT_CREATE_OR_JOIN_ROOM)
             {
-
+                //Debug.Log("Create SERVER_EVT_CREATE_OR_JOIN_ROOM");
                 string roomid = reader.GetString();
                 int maxPlayers = reader.GetInt();
                 lock (thelock)
@@ -594,8 +607,7 @@ public class LNSServer : IDisposable
                 client.connectedRoom.ProcessReceivedData(client, instruction, reader, deliveryMethod);
             }
         }
-
-
+       
     }
 
     public void RemoveGame(LNSGame game)
