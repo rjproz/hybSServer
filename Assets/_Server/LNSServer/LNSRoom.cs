@@ -164,8 +164,6 @@ public class LNSRoom : IDisposable
                 byte[] value = reader.GetRemainingBytes();
                 if (value.Length <= 1000)
                 {
-
-
                     if (persistentData.ContainsKey(key))
                     {
                         persistentData[key] = value;
@@ -204,6 +202,7 @@ public class LNSRoom : IDisposable
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
                 writer.Put(from.id);
                 writer.Put(reader.GetRemainingBytes());
+               
                 for (int i = 0; i < clients.Count; i++)
                 {
                     if (clients[i].id != from.id)

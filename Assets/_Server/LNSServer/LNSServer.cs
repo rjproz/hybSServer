@@ -57,7 +57,7 @@ public class LNSServer : IDisposable
         new Thread(() =>
         {
             var tcpConfig = new TcpConfig(true, 0, 0);
-            SslConfig sslConfig = new SslConfig(false, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
+            SslConfig sslConfig = new SslConfig(true, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
 
             System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
            
@@ -88,7 +88,7 @@ public class LNSServer : IDisposable
 
             webSocketServer.onData += (connectionId, data) =>
             {
-                Debug.Log("data from webclient");
+              
                 LNSClient client = clients_webgl[connectionId];
 
                 LNSReader reader = LNSReader.GetFromPool();
@@ -146,7 +146,7 @@ public class LNSServer : IDisposable
                         }
                         client.Dispose();
                         clients_webgl.Remove(networkId);
-                        Debug.Log("Disconnected : " + networkId);
+                        Debug.Log("Disconnected  : " + networkId);
                     }
                 }
                 
@@ -259,9 +259,9 @@ public class LNSServer : IDisposable
                 byte instruction = reader.GetByte();
 
                 LNSReader reader1 = LNSReader.GetFromPool();
-                reader1.SetSource( reader.RawData,reader.Position,reader.RawDataSize);
+                reader1.SetSource(reader.GetRemainingBytes());// reader.RawData,reader.Position,reader.AvailableBytes);
                 OnDataReceiveProcess(client, instruction, reader1,deliveryMethod);
-                
+                reader1.Recycle();
                 reader.Recycle();
 
 
