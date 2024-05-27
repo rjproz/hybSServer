@@ -20,6 +20,7 @@ public class LNSServer : IDisposable
     public Dictionary<string, LNSGame> games = new Dictionary<string, LNSGame>();
 
     public static SimpleWebServer webSocketServer;
+    //public static WebSocketServerImplementation webSocketServer;
     public object thelock = new object();
 
     private bool disposed;
@@ -56,14 +57,26 @@ public class LNSServer : IDisposable
     {
         new Thread(() =>
         {
-            var tcpConfig = new TcpConfig(true, 0, 0);
-            SslConfig sslConfig = new SslConfig(true, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
+            var tcpConfig = new TcpConfig(false, 0, 0);
+
+            bool isSSL = true;
+
+            List<string> hostnames = new List<string>();
+#if UNITY_EDITOR_OSX
+            isSSL = false;
+            hostnames.Add("localhost");
+#else
+            hostnames.Add("localhost");
+            hostnames.Add("vps.hybriona.com");
+#endif
+            SslConfig sslConfig = new SslConfig(isSSL, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
 
             System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-           
-            webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
 
-            
+            webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
+            //webSocketServer = new WebSocketServerImplementation(hostnames, this.port + 1, isSSL);
+
+
             webSocketServer.onConnect += (connectionId)=> {
                 LNSClient client = null;
                 
@@ -80,9 +93,9 @@ public class LNSServer : IDisposable
                 }
                 
 
-                //string msg = "I am RJproz\n\n";
+                string msg = "I am RJproz\n\n";
                 
-                //webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(msg.ConvertToBytes()));
+                webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(msg.ConvertToBytes()));
                 
             };
 
@@ -93,38 +106,64 @@ public class LNSServer : IDisposable
 
                 LNSReader reader = LNSReader.GetFromPool();
                 reader.SetSource(data.Array, data.Offset, data.Count);
-
-                if (data[0] == LNSConstants.SERVER_EVT_VERIFY_CLIENT)
+                var instruction = reader.GetByte();
+                if (instruction == LNSConstants.SERVER_EVT_VERIFY_CLIENT)
                 {
-                    reader.GetByte();
+                    //Debug.Log("webSocketServer SERVER_EVT_VERIFY_CLIENT");
 
-                    string clientKey = reader.GetString();
-                    string userid = reader.GetString();
-                    string displayName = reader.GetString();
-                    string gameKey = reader.GetString();
-                    string version = reader.GetString();
-                    CLIENT_PLATFORM platform = (CLIENT_PLATFORM)reader.GetByte();
+                    try
+                    {
+                        string clientKey = reader.GetString();
+                        string userid = reader.GetString();
 
 
-                    client.id = userid;
-                    client.displayname = displayName;
-                    client.gameKey = gameKey;
-                    client.gameVersion = version;
-                    client.platform = platform;
-                    connectedClientIds.Add(userid);
-                    Debug.Log("Connected : " + connectionId + "| User ID: "+ userid + " | GameKey: "+ gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
-                    reader.Recycle();
 
-                    byte[] verifiedMsg = new byte[1];
-                    verifiedMsg[0] = LNSConstants.CLIENT_EVT_VERIFIED;
-                    webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(verifiedMsg));
-                    
+                        string displayName = reader.GetString();
+                        string gameKey = reader.GetString();
+                        string version = reader.GetString();
+                        CLIENT_PLATFORM platform = (CLIENT_PLATFORM)reader.GetByte();
+
+
+                        client.id = userid;
+                        client.displayname = displayName;
+                        client.gameKey = gameKey;
+                        client.gameVersion = version;
+                        client.platform = platform;
+
+
+                        bool valid = !connectedClientIds.Contains(userid);
+                        //LNSConstants.CLIENT_EVT_UNAUTHORIZED_GAME
+                        //LNSConstants.CLIENT_EVT_USER_ALREADY_CONNECTED
+                        if (valid)
+                        {
+                            connectedClientIds.Add(userid);
+                            Debug.Log("Connected : " + connectionId + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
+                            byte[] verifiedMsg = new byte[1];
+                            verifiedMsg[0] = LNSConstants.CLIENT_EVT_VERIFIED;
+                            webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(verifiedMsg));
+                        }
+                        else
+                        {
+                            client.Dispose();
+                            clients_webgl.Remove(connectionId);
+                            webSocketServer.KickClient(connectionId);
+                        }
+                        reader.Recycle();
+
+                      
+                    }
+                    catch {
+                        reader.Recycle();
+                        client.Dispose();
+                        clients_webgl.Remove(connectionId);
+                        webSocketServer.KickClient(connectionId);
+                    }
                 }
                 else
                 {
                    
                     //Debug.Log(data.ToArray().ConvertToString());
-                    var instruction = reader.GetByte();
+                   
                     OnDataReceiveProcess(client, instruction, reader);
                 }
 
@@ -157,13 +196,14 @@ public class LNSServer : IDisposable
                 Debug.LogError($"webSocketServerError: {connectionId} and error: {exception.Message} {exception.StackTrace}");
             };
 
+            //webSocketServer.Start();
             webSocketServer.Start((ushort)(this.port + 1));
-
+            Debug.Log("WebSocket Server Started");
 
             EventBasedNetListener listener = new EventBasedNetListener();
             NetManager server = new NetManager(listener);
             server.Start(this.port);
-            Debug.Log("Server Started");
+            Debug.Log("UDP Server Started");
             listener.ConnectionRequestEvent += request =>
             {
                 //Debug.Log("connection request recieved");

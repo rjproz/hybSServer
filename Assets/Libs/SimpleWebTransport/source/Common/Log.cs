@@ -80,7 +80,7 @@ namespace Mirror.SimpleWeb
             if (level < Levels.info)
                 return;
 
-            logger.Log(LogType.Log, $"INFO_EXCEPTION: <color=blue>{e.GetType().Name}</color> Message: {e.Message} {e.StackTrace}");
+            logger.Log(LogType.Log, $"INFO_EXCEPTION: <color=blue>{e.GetType().Name}</color> Message: {e.Message}");
         }
 
         [Conditional(SIMPLEWEB_LOG_ENABLED), Conditional(DEBUG)]
@@ -111,7 +111,6 @@ namespace Mirror.SimpleWeb
         {
             // always log Exceptions
             logger.Log(LogType.Error, $"EXCEPTION: <color=red>{e.GetType().Name}</color> Message: {e.Message}");
-            Debug.LogError(e.InnerException.Message + " "+e.InnerException.StackTrace);
         }
     }
 }
