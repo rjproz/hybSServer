@@ -39,7 +39,7 @@ namespace Mirror.SimpleWeb
         {
             (Connection conn, int bufferSize, bool setMask) = config;
 
-            Profiler.BeginThreadProfiling("SimpleWeb", $"SendLoop {conn.connId}");
+            //Profiler.BeginThreadProfiling("SimpleWeb", $"SendLoop {conn.connId}");
 
             // create write buffer for this thread
             byte[] writeBuffer = new byte[bufferSize];
@@ -114,7 +114,7 @@ namespace Mirror.SimpleWeb
             }
             finally
             {
-                Profiler.EndThreadProfiling();
+                //Profiler.EndThreadProfiling();
                 conn.Dispose();
                 maskHelper?.Dispose();
             }

@@ -38,6 +38,12 @@ namespace Mirror.SimpleWeb
         /// </summary>
         public void Dispose()
         {
+            if (hasDisposed)
+            {
+                onDispose.Invoke(this);
+                return;
+            }
+
             Log.Verbose($"Dispose {ToString()}");
 
             // check hasDisposed first to stop ThreadInterruptedException on lock
@@ -53,9 +59,12 @@ namespace Mirror.SimpleWeb
                 hasDisposed = true;
 
                 // stop threads first so they dont try to use disposed objects
-                receiveThread.Interrupt();
-                sendThread?.Interrupt();
-
+                try
+                {
+                    receiveThread.Interrupt();
+                    sendThread?.Interrupt();
+                }
+                catch { }
                 try
                 {
                     // stream 
@@ -69,15 +78,26 @@ namespace Mirror.SimpleWeb
                     Log.Exception(e);
                 }
 
-                sendPending.Dispose();
-
-                // release all buffers in send queue
-                while (sendQueue.TryDequeue(out ArrayBuffer buffer))
+                try
                 {
-                    buffer.Release();
+                    sendPending.Dispose();
+                }catch
+                {
+
                 }
 
-                onDispose.Invoke(this);
+                try
+                {
+                    // release all buffers in send queue
+                    while (sendQueue.TryDequeue(out ArrayBuffer buffer))
+                    {
+                        buffer.Release();
+                    }
+                }catch
+                {
+
+                }
+               
             }
         }
 
