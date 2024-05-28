@@ -64,7 +64,7 @@ public class LNSCreateRoomParameters
         writer.Put(idleLife);
     }
 
-    public static LNSCreateRoomParameters FromReader(NetPacketReader reader)
+    public static LNSCreateRoomParameters FromReader(LNSReader reader)
     {
         if (reader.AvailableBytes > 0)
         {
@@ -144,7 +144,7 @@ public class LNSJoinRoomFilter
         }
     }
 
-    public static LNSJoinRoomFilter FromReader(NetPacketReader reader)
+    public static LNSJoinRoomFilter FromReader(LNSReader reader)
     {
         int filterCount = reader.GetByte();
         if (filterCount > 0)

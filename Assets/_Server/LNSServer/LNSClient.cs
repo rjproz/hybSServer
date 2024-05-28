@@ -16,15 +16,24 @@ public class LNSClient : IDisposable,IQuadTreeObject
    
 
     public NetPeer peer { get; set; }
+    public bool isWebGL { get { return peer == null; } }
     public LNSRoom connectedRoom { get; set; }
     public NetDataWriter writer { get; set; }
     public Vector2 position { get; set; } //Position in Quad tree
     private object thelock = new object();
+
+
     public LNSClient(NetPeer peer)
     {
         this.peer = peer;
 
         writer = new NetDataWriter();
+    }
+
+    public static LNSClient CreateWebGlClient()
+    {
+        var o =  new LNSClient(null);
+        return o;
     }
 
     ~LNSClient()
@@ -50,7 +59,15 @@ public class LNSClient : IDisposable,IQuadTreeObject
             {
                 writer.Reset();
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_DISCONNECTED);
-                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+
+                if (isWebGL)
+                {
+                    LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+                }
+                else
+                {
+                    peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                }
             }
         }
         
@@ -64,7 +81,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_FAILED_CREATE);
             writer.Put((byte)code);
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
 
@@ -76,7 +100,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_CREATED);
             writer.Put(connectedRoom.id);
             //UnityEngine.Debug.Log("SendRoomCreatedEvent");
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
 
@@ -87,7 +118,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_JOINED);
             writer.Put(connectedRoom.id);
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
     public void SendRoomReJoinedEvent()
@@ -97,7 +135,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_REJOINED);
             writer.Put(connectedRoom.id);
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
 
@@ -108,7 +153,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_FAILED_JOIN);
             writer.Put((byte)failureCode);
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
 
@@ -118,7 +170,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
         {
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_FAILED_RANDOM_JOIN);
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
 
@@ -129,13 +188,23 @@ public class LNSClient : IDisposable,IQuadTreeObject
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_FAILED_REJOIN);
             writer.Put((byte)failureCode);
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
 
     public void Dispose()
     {
-        peer.Disconnect();
+        if (!isWebGL)
+        {
+            peer.Disconnect();
+        }
         connectedRoom = null;
     }
 
@@ -146,7 +215,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
             NetDataWriter _writer = new NetDataWriter();
             _writer.Put(LNSConstants.CLIENT_EVT_ROOM_LIST);
             _writer.Put(UnityEngine.JsonUtility.ToJson(roomList));
-            peer.Send(_writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(_writer.Data, 0, _writer.Length));
+            }
+            else
+            {
+                peer.Send(_writer, DeliveryMethod.ReliableOrdered);
+            }
             _writer = null;
         }
     }
@@ -159,7 +235,14 @@ public class LNSClient : IDisposable,IQuadTreeObject
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_EXISTS_RESPONSE);
             writer.Put(roomid);
             writer.Put(exists);
-            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
         }
     }
 }
