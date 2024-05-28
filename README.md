@@ -4,7 +4,7 @@ The UDP server is being build using [LiteNetLib](https://github.com/RevenantX/Li
 
 Websocket server is being build using [SimpleWebTransport] https://github.com/MirrorNetworking/SimpleWebTransport.
 
-Websocket server is used to server Webgl clients.
+Websocket server is used to serve Webgl clients.
 
 Also, **hybSClient** repo can be found [here](https://github.com/rjproz/hybSClient)
 
