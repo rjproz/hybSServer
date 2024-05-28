@@ -57,7 +57,7 @@ public class LNSServer : IDisposable
     {
         new Thread(() =>
         {
-            var tcpConfig = new TcpConfig(false, 0, 0);
+            var tcpConfig = new TcpConfig(true, 0, 0);
 
             bool isSSL = true;
 
@@ -148,15 +148,19 @@ public class LNSServer : IDisposable
                             clients_webgl.Remove(connectionId);
                             webSocketServer.KickClient(connectionId);
                         }
-                        reader.Recycle();
+                        
 
                       
                     }
                     catch {
-                        reader.Recycle();
+                        
                         client.Dispose();
                         clients_webgl.Remove(connectionId);
                         webSocketServer.KickClient(connectionId);
+                    }
+                    finally
+                    {
+                        reader.Recycle();
                     }
                 }
                 else
