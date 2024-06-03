@@ -1,7 +1,10 @@
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
@@ -23,7 +26,7 @@ public class HybWebSocketServer
     static int connectionIdCounter = 0;
     const int bufferSize = 16 * 1024;
 
-    static Dictionary<int,(TcpClient,Stream)> connectedClients = new Dictionary<int, (TcpClient, Stream)>();
+    static Dictionary<int,(TcpClient client,Stream stream, SemaphoreSlim writeSemaphore)> connectedClients = new Dictionary<int, (TcpClient, Stream, SemaphoreSlim)>();
     public HybWebSocketServer(string sslPath,string sslPassword)
     {
         
@@ -38,7 +41,7 @@ public class HybWebSocketServer
         else
         {
             protocol = "https";
-            sslCertificate = new X509Certificate2(sslPath, sslPassword);
+            sslCertificate = new X509Certificate2(sslPath, sslPassword,X509KeyStorageFlags.MachineKeySet);
            // httpListener.AuthenticationSchemeSelectorDelegate = (sender, host) => sslCertificate;
         }
         
@@ -69,14 +72,15 @@ public class HybWebSocketServer
     async Task HandleClientAsync(TcpClient tcpClient)
     {
         Stream stream = null;
-        
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         try
         {
-            var buffer = new byte[bufferSize];
+            
             if (sslCertificate != null)
             {
-                stream = new SslStream(tcpClient.GetStream(), false);
-                await (stream as SslStream).AuthenticateAsServerAsync(sslCertificate, clientCertificateRequired: false, checkCertificateRevocation: false);
+                var sslStream = new SslStream(tcpClient.GetStream(), false);
+                await sslStream.AuthenticateAsServerAsync(sslCertificate, clientCertificateRequired: false, checkCertificateRevocation: false);
+                stream = sslStream;
             }
             else
             {
@@ -85,21 +89,23 @@ public class HybWebSocketServer
 
             int bytesRead = 0;
 
-            bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-
-            var request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
-            if (IsWebSocketRequest(request))
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) != 0)
             {
-                var response = CreateWebSocketHandshakeResponse(request);
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(response), 0, response.Length);
-                await HandleWebSocketAsync(tcpClient,stream);
-            }
-            else
-            {
-                Debug.LogError("Invalid WebSocket request");
-                tcpClient.Close();
-                tcpClient.Dispose();
+
+                var request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                if (IsWebSocketRequest(request))
+                {
+                    var response = CreateWebSocketHandshakeResponse(request);
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(response), 0, response.Length);
+                    await HandleWebSocketAsync(tcpClient, stream);
+                }
+                else
+                {
+                    Debug.LogError("Invalid WebSocket request");
+                    tcpClient.Close();
+                    tcpClient.Dispose();
+                }
             }
         }
         catch (Exception ex)
@@ -107,6 +113,10 @@ public class HybWebSocketServer
             Debug.LogError($"Exception: {ex}");
             tcpClient.Close();
             tcpClient.Dispose();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 
@@ -130,9 +140,15 @@ public class HybWebSocketServer
     {
         var buffer = new byte[bufferSize];
         int connectionId = ++connectionIdCounter;
-        connectedClients.Add(connectionId, (client,stream));
+        var writeSemaphore = new SemaphoreSlim(1, 1);
+        connectedClients.Add(connectionId, (client,stream, writeSemaphore));
 
-        if(onConnect != null)
+        var messageBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        int messageBufferLength = 0;
+
+        var maskingKey = new byte[4];
+
+        if (onConnect != null)
         {
             onConnect(connectionId);
         }
@@ -148,16 +164,117 @@ public class HybWebSocketServer
                     {
                         onDisconnect(connectionId);
                         connectedClients.Remove(connectionId);
+                        stream.Close();
+                        stream.Dispose();
+                        writeSemaphore.Dispose();
                         client.Close();
                         client.Dispose();
                     }
                     break;
                 }
 
-                if(onData != null)
+                int offset = 0;
+                while (offset < bytesRead)
                 {
-                    onData(connectionId, new ArraySegment<byte>(buffer, 0, bytesRead));
+                    bool fin = (buffer[offset] & 0b10000000) != 0;
+                    int opcode = buffer[offset] & 0b00001111;
+                    bool masked = (buffer[offset + 1] & 0b10000000) != 0;
+                    int payloadLength = buffer[offset + 1] & 0b01111111;
+
+                    offset += 2;
+
+                    if (payloadLength == 126)
+                    {
+                        payloadLength = BitConverter.ToUInt16(buffer, offset);
+                        offset += 2;
+                    }
+                    else if (payloadLength == 127)
+                    {
+                        payloadLength = (int)BitConverter.ToUInt64(buffer, offset);
+                        offset += 8;
+                    }
+
+                   
+                    byte[] payload = ArrayPool<byte>.Shared.Rent(payloadLength);
+
+                    try
+                    {
+                        if (masked)
+                        {
+                            Array.Copy(buffer, offset, maskingKey, 0, 4);
+                            offset += 4;
+                        }
+
+                        Array.Copy(buffer, offset, payload, 0, payloadLength);
+                        offset += payloadLength;
+
+                        if (masked)
+                        {
+                            
+
+                            for (int i = 0; i < payloadLength; i++)
+                            {
+                                payload[i] ^= maskingKey[i % 4];
+                            }
+                        }
+
+                        if (messageBufferLength + payloadLength > messageBuffer.Length)
+                        {
+                            var newMessageBuffer = ArrayPool<byte>.Shared.Rent(messageBufferLength + payloadLength);
+                            Array.Copy(messageBuffer, newMessageBuffer, messageBufferLength);
+                            ArrayPool<byte>.Shared.Return(messageBuffer);
+                            messageBuffer = newMessageBuffer;
+                        }
+
+                        Array.Copy(payload, 0, messageBuffer, messageBufferLength, payloadLength);
+                        messageBufferLength += payloadLength;
+
+                        if (fin)
+                        {
+                            //string msg = System.Text.Encoding.UTF8.GetString(messageBuffer, 0, messageBufferLength);
+                            //Debug.Log($"opcode is {opcode} and msg:{msg}" );
+
+                            if(onData != null)
+                            {
+                                onData(connectionId, new ArraySegment<byte>(messageBuffer, 0, messageBufferLength));
+                            }
+                            /*
+                            var messageSegment = new ArraySegment<byte>(messageBuffer, 0, messageBufferLength);
+
+                            if (opcode == 1) // Text frame
+                            {
+                                var message = Encoding.UTF8.GetString(messageSegment.Array, messageSegment.Offset, messageSegment.Count);
+                                Debug.Log($"Received text message: {message} with mask? {masked}");
+                            }
+                            else if (opcode == 2) // Binary frame
+                            {
+                                Debug.Log($"Received binary message (length: {messageSegment.Count})");
+                            }
+                            */
+
+                            /*
+                            var messageSegment = new ArraySegment<byte>(messageBuffer, 0, messageBufferLength);
+                            var frameSegment = CreateWebSocketFrame(messageSegment);
+
+                            // Echo the message back without masking (server side)
+                            await st.WriteAsync(frameSegment.Array, frameSegment.Offset, frameSegment.Count);
+
+                            // Return the frame array to the pool after writing it
+                            ArrayPool<byte>.Shared.Return(frameSegment.Array);
+                            */
+                            messageBufferLength = 0;
+                        }
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(payload);
+                    }
+                   
                 }
+
+               
+
+               
                 
                
             }
@@ -166,14 +283,61 @@ public class HybWebSocketServer
                 Console.WriteLine($"Exception: {ex}");
                 break;
             }
-           
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(messageBuffer);
+            }
         }
     }
 
-
-    public void SendOne(int connectionId,ArraySegment<byte> data)
+    private static ArraySegment<byte> CreateWebSocketFrame(ArraySegment<byte> message)
     {
-        connectedClients[connectionId].Item2.WriteAsync(data);
+        int headerSize = 2 + (message.Count > 125 ? (message.Count <= ushort.MaxValue ? 2 : 8) : 0);
+        int frameSize = headerSize + message.Count;
+
+        byte[] frame = ArrayPool<byte>.Shared.Rent(frameSize);
+        int offset = 0;
+
+        frame[offset++] = 0b10000010; // FIN and binary frame opcode
+
+        if (message.Count <= 125)
+        {
+            frame[offset++] = (byte)message.Count;
+        }
+        else if (message.Count <= ushort.MaxValue)
+        {
+            frame[offset++] = 126;
+            BitConverter.GetBytes((ushort)IPAddress.HostToNetworkOrder((short)message.Count)).CopyTo(frame, offset);
+            offset += 2;
+        }
+        else
+        {
+            frame[offset++] = 127;
+            BitConverter.GetBytes((ulong)IPAddress.HostToNetworkOrder((long)message.Count)).CopyTo(frame, offset);
+            offset += 8;
+        }
+
+        message.Array.AsSpan(message.Offset, message.Count).CopyTo(frame.AsSpan(offset));
+
+        return new ArraySegment<byte>(frame, 0, frameSize);
+    }
+
+    public async void SendOne(int connectionId,ArraySegment<byte> data)
+    {
+        var clientInfo = connectedClients[connectionId];
+        var frameSegment = CreateWebSocketFrame(data);
+        await clientInfo.writeSemaphore.WaitAsync();
+        try
+        {
+            await clientInfo.stream.WriteAsync(frameSegment.Array, frameSegment.Offset, frameSegment.Count);
+
+        }
+        finally
+        {
+            clientInfo.writeSemaphore.Release();
+            ArrayPool<byte>.Shared.Return(frameSegment.Array);
+        }
+       
     }
 
     public void ProcessMessageQueue()

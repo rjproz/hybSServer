@@ -69,19 +69,26 @@ public class LNSServer : IDisposable
             hostnames.Add("localhost");
             hostnames.Add("vps.hybriona.com");
 #endif
+            isSSL = true;
             SslConfig sslConfig = new SslConfig(isSSL, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
 
             System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 
             //webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
-            //webSocketServer = new HybWebSocketServer("cert.pfx", "rjproz");
-            webSocketServer = new HybWebSocketServer("", "rjproz");
+            if (isSSL)
+            {
+                webSocketServer = new HybWebSocketServer("cert.pfx", "rjproz");
+            }
+            else
+            {
+                webSocketServer = new HybWebSocketServer("", "rjproz");
+            }
 
 
 
             webSocketServer.onConnect += (connectionId)=> {
                 LNSClient client = null;
-                
+                Debug.Log("webSocketServer Connected  : " + connectionId);
                 if (!clients_webgl.ContainsKey(connectionId))
                 {
                     client = LNSClient.CreateWebGlClient();
