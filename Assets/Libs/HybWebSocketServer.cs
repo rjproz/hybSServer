@@ -98,14 +98,17 @@ public class HybWebSocketServer
                 {
                     var response = CreateWebSocketHandshakeResponse(request);
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(response), 0, response.Length);
-                    await HandleWebSocketAsync(tcpClient, stream);
+                    HandleWebSocketAsync(tcpClient, stream);
+                    
                 }
                 else
                 {
                     Debug.LogError("Invalid WebSocket request");
                     tcpClient.Close();
                     tcpClient.Dispose();
+                    
                 }
+                return;
             }
         }
         catch (Exception ex)
