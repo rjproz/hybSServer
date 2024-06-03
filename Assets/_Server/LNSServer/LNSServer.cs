@@ -19,8 +19,8 @@ public class LNSServer : IDisposable
 
     public Dictionary<string, LNSGame> games = new Dictionary<string, LNSGame>();
 
-    public static SimpleWebServer webSocketServer;
-    //public static WebSocketServerImplementation webSocketServer;
+    //public static SimpleWebServer webSocketServer;
+    public static HybWebSocketServer webSocketServer;
     public object thelock = new object();
 
     private bool disposed;
@@ -73,8 +73,10 @@ public class LNSServer : IDisposable
 
             System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 
-            webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
-            //webSocketServer = new WebSocketServerImplementation(hostnames, this.port + 1, isSSL);
+            //webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
+            //webSocketServer = new HybWebSocketServer("cert.pfx", "rjproz");
+            webSocketServer = new HybWebSocketServer("", "rjproz");
+
 
 
             webSocketServer.onConnect += (connectionId)=> {
@@ -195,10 +197,11 @@ public class LNSServer : IDisposable
                 
             };
 
+            /*
             webSocketServer.onError += (connectionId, exception)=>
             {
                 Debug.LogError($"webSocketServerError: {connectionId} and error: {exception.Message} {exception.StackTrace}");
-            };
+            };*/
 
             //webSocketServer.Start();
             webSocketServer.Start((ushort)(this.port + 1));
