@@ -1,9 +1,7 @@
 using System;
 using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -17,7 +15,7 @@ public class HybWebSocketServer
 {
     public Action<int> onConnect;
     public Action<int> onDisconnect;
-    public Action<int,ArraySegment<byte>> onData;
+    public Action<int, ArraySegment<byte>> onData;
 
     private TcpListener tcpListener;
     private X509Certificate2 sslCertificate;
@@ -26,57 +24,46 @@ public class HybWebSocketServer
     static int connectionIdCounter = 0;
     const int bufferSize = 16 * 1024;
 
-
     private static readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Create(bufferSize, Environment.ProcessorCount);
-    private Dictionary<int,(TcpClient client,Stream stream, SemaphoreSlim writeSemaphore)> connectedClients = new Dictionary<int, (TcpClient, Stream, SemaphoreSlim)>();
+    private readonly Dictionary<int, (TcpClient client, Stream stream, SemaphoreSlim writeSemaphore)> connectedClients = new Dictionary<int, (TcpClient, Stream, SemaphoreSlim)>();
+    private readonly object dictionaryLock = new object();
 
-    private object dictionaryLock = new object();
-    public HybWebSocketServer(string sslPath,string sslPassword)
+    public HybWebSocketServer(string sslPath, string sslPassword)
     {
-        
-
-
         if (string.IsNullOrEmpty(sslPath))
         {
             protocol = "http";
             sslCertificate = null;
-           
         }
         else
         {
             protocol = "https";
-            sslCertificate = new X509Certificate2(sslPath, sslPassword,X509KeyStorageFlags.MachineKeySet);
-           // httpListener.AuthenticationSchemeSelectorDelegate = (sender, host) => sslCertificate;
+            sslCertificate = new X509Certificate2(sslPath, sslPassword, X509KeyStorageFlags.MachineKeySet);
         }
-        
-
     }
 
     public void Start(int port)
     {
-        tcpListener = new TcpListener(System.Net.IPAddress.Any, port);
+        tcpListener = new TcpListener(IPAddress.Any, port);
         tcpListener.Start();
         _ = Process();
     }
 
-    async Task Process()
+    private async Task Process()
     {
         while (true)
         {
             var tcpClient = await tcpListener.AcceptTcpClientAsync();
             _ = HandleClientAsync(tcpClient); // Handle each client in a new task
         }
-
-        //tcpListener.Stop();
     }
 
-    async Task HandleClientAsync(TcpClient tcpClient)
+    private async Task HandleClientAsync(TcpClient tcpClient)
     {
         Stream stream = null;
-        var buffer = _bufferPool.Rent(bufferSize); 
+        var buffer = _bufferPool.Rent(bufferSize);
         try
         {
-            
             if (sslCertificate != null)
             {
                 var sslStream = new SslStream(tcpClient.GetStream(), false);
@@ -92,40 +79,33 @@ public class HybWebSocketServer
 
             if (bytesRead > 0)
             {
-
                 var request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
                 if (IsWebSocketRequest(request))
                 {
                     var response = CreateWebSocketHandshakeResponse(request);
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(response), 0, response.Length);
-                    _= HandleWebSocketAsync(tcpClient, stream);
-                    
+                    _ = HandleWebSocketAsync(tcpClient, stream);
                 }
                 else
                 {
                     Debug.LogError("Invalid WebSocket request");
                     stream.Dispose();
                     tcpClient.Close();
-                    tcpClient.Dispose();
-                    
                 }
-               
             }
         }
         catch (Exception ex)
         {
             Debug.LogError($"Exception: {ex}");
-            stream.Dispose();
+            stream?.Dispose();
             tcpClient.Close();
-            tcpClient.Dispose();
         }
         finally
         {
             _bufferPool.Return(buffer);
         }
     }
-
 
     private bool IsWebSocketRequest(string request)
     {
@@ -145,35 +125,29 @@ public class HybWebSocketServer
     private async Task HandleWebSocketAsync(TcpClient client, Stream stream)
     {
         var buffer = _bufferPool.Rent(bufferSize);
-        int connectionId = ++connectionIdCounter;
+        int connectionId = Interlocked.Increment(ref connectionIdCounter);
         var writeSemaphore = new SemaphoreSlim(1, 1);
         client.NoDelay = true;
         client.SendTimeout = 5000;
-        bool isConnected = true;
+
         lock (dictionaryLock)
         {
             connectedClients.Add(connectionId, (client, stream, writeSemaphore));
         }
+
         var messageBuffer = _bufferPool.Rent(bufferSize);
         int messageBufferLength = 0;
-
         var maskingKey = new byte[4];
 
-        if (onConnect != null)
-        {
-            onConnect(connectionId);
-        }
+        onConnect?.Invoke(connectionId);
 
         try
         {
             while (client.Connected)
             {
-                Debug.Log("loop running for connecionid " + connectionId);
                 var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                 if (bytesRead == 0)
                 {
-                    //finally block will be called
-                    isConnected = false;
                     break;
                 }
 
@@ -198,7 +172,6 @@ public class HybWebSocketServer
                         offset += 8;
                     }
 
-
                     byte[] payload = _bufferPool.Rent(payloadLength);
 
                     try
@@ -214,7 +187,6 @@ public class HybWebSocketServer
 
                         if (masked)
                         {
-
                             for (int i = 0; i < payloadLength; i++)
                             {
                                 payload[i] ^= maskingKey[i % 4];
@@ -234,14 +206,7 @@ public class HybWebSocketServer
 
                         if (fin)
                         {
-                            //string msg = System.Text.Encoding.UTF8.GetString(messageBuffer, 0, messageBufferLength);
-                            //Debug.Log($"opcode is {opcode} and msg:{msg}" );
-
-                            if (onData != null)
-                            {
-                                onData(connectionId, new ArraySegment<byte>(messageBuffer, 0, messageBufferLength));
-                            }
-
+                            onData?.Invoke(connectionId, new ArraySegment<byte>(messageBuffer, 0, messageBufferLength));
                             messageBufferLength = 0;
                         }
                     }
@@ -249,9 +214,7 @@ public class HybWebSocketServer
                     {
                         _bufferPool.Return(payload);
                     }
-
                 }
-
             }
         }
         catch (Exception ex)
@@ -262,14 +225,13 @@ public class HybWebSocketServer
         {
             _bufferPool.Return(buffer);
             _bufferPool.Return(messageBuffer);
-            isConnected = false;
-            if (onDisconnect != null)
+
+            if (connectedClients.ContainsKey(connectionId))
             {
-                onDisconnect(connectionId);
+                onDisconnect?.Invoke(connectionId);
+                KickClient(connectionId);
             }
-            KickClient(connectionId);
         }
-        
     }
 
     private static ArraySegment<byte> CreateWebSocketFrame(ArraySegment<byte> message)
@@ -304,7 +266,7 @@ public class HybWebSocketServer
         return new ArraySegment<byte>(frame, 0, frameSize);
     }
 
-    public async void SendOne(int connectionId,ArraySegment<byte> data)
+    public async void SendOne(int connectionId, ArraySegment<byte> data)
     {
         if (connectedClients.ContainsKey(connectionId))
         {
@@ -314,29 +276,23 @@ public class HybWebSocketServer
             try
             {
                 await clientInfo.stream.WriteAsync(frameSegment.Array, frameSegment.Offset, frameSegment.Count);
-
             }
             catch (SocketException socketEx)
             {
-                if (onDisconnect != null)
+                if (connectedClients.ContainsKey(connectionId))
                 {
-                    onDisconnect(connectionId);
+                    onDisconnect?.Invoke(connectionId);
+                    KickClient(connectionId);
                 }
-                KickClient(connectionId);
             }
             finally
             {
-                if (clientInfo.writeSemaphore != null)
-                {
-                    clientInfo.writeSemaphore.Release();
-                }
+                clientInfo.writeSemaphore.Release();
                 _bufferPool.Return(frameSegment.Array);
             }
         }
-       
     }
 
-   
     public void KickClient(int connectionId)
     {
         try
@@ -345,7 +301,6 @@ public class HybWebSocketServer
             resource.stream.Close();
             resource.stream.Dispose();
             resource.client.Close();
-            resource.client.Dispose();
             resource.writeSemaphore.Dispose();
             lock (dictionaryLock)
             {
