@@ -35,6 +35,23 @@ public class LNSServer : IDisposable
 
         threadWaitMilliseconds =  Mathf.RoundToInt(1000f / (float)this.serverTick);
         logFilePath = string.Format("Server_LOG_{0}.txt", this.port);
+
+        int i = 0;
+        try
+        {
+            while (i < 1000)
+            {
+                if(i == 5)
+                {
+                    break;
+                }
+                i++;
+            }
+        }
+        finally
+        {
+            Debug.Log("Finally outside while (i) is " + i);
+        }
     }
 
     ~ LNSServer()
@@ -69,7 +86,7 @@ public class LNSServer : IDisposable
             hostnames.Add("localhost");
             hostnames.Add("vps.hybriona.com");
 #endif
-            isSSL = true;
+            
             SslConfig sslConfig = new SslConfig(isSSL, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
 
             System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
@@ -174,9 +191,7 @@ public class LNSServer : IDisposable
                 }
                 else
                 {
-                   
-                    //Debug.Log(data.ToArray().ConvertToString());
-                   
+
                     OnDataReceiveProcess(client, instruction, reader);
                 }
 
@@ -345,7 +360,7 @@ public class LNSServer : IDisposable
             while (true)
             {
                 server.PollEvents();
-                webSocketServer.ProcessMessageQueue();
+                //webSocketServer.ProcessMessageQueue();
                 Thread.Sleep(threadWaitMilliseconds); // 30 times per second
             }
         }).Start();
