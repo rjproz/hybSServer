@@ -8,4 +8,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/MainScene.unity
     guid: 9fc0d4010bbf28b4594072e72b8655ab
+  - enabled: 0
+    path: Assets/_Server/WebsocketTest.unity
+    guid: 788637790f3084a1595d2bbf415e54d6
   m_configObjects: {}

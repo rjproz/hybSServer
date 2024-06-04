@@ -62,21 +62,29 @@ public class HybWebSocketServer
     {
         while (true)
         {
+            Debug.Log("waiting for new request");
             var tcpClient = await tcpListener.AcceptTcpClientAsync();
             _ = HandleClientAsync(tcpClient); // Handle each client in a new task
-            Thread.Sleep(500);
+            await Task.Delay(200);
         }
     }
 
     private async Task HandleClientAsync(TcpClient tcpClient)
     {
+        tcpClient.NoDelay = true;
+        tcpClient.SendTimeout = 5000;
+        tcpClient.ReceiveTimeout = 20000;
+
+
         Stream stream = null;
+
         var buffer = _bufferPool.Rent(bufferSize);
         try
         {
             if (sslCertificate != null)
             {
                 var sslStream = new SslStream(tcpClient.GetStream(), false);
+                
                 await sslStream.AuthenticateAsServerAsync(sslCertificate, clientCertificateRequired: false, checkCertificateRevocation: false);
                 stream = sslStream;
             }
@@ -85,6 +93,7 @@ public class HybWebSocketServer
                 stream = tcpClient.GetStream();
             }
 
+          
             int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
 
             if (bytesRead > 0)
@@ -94,6 +103,7 @@ public class HybWebSocketServer
                 if (IsWebSocketRequest(request))
                 {
                     var response = CreateWebSocketHandshakeResponse(request);
+                    Debug.Log("waiting in websocket handshake");
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(response), 0, response.Length);
                     _ = HandleWebSocketAsync(tcpClient, stream);
                 }
@@ -141,9 +151,7 @@ public class HybWebSocketServer
         var buffer = _bufferPool.Rent(bufferSize);
         int connectionId = Interlocked.Increment(ref connectionIdCounter);
         var writeSemaphore = new SemaphoreSlim(1, 1);
-        client.NoDelay = true;
-        client.SendTimeout = 5000;
-        client.ReceiveTimeout = 20000;
+      
         lock (dictionaryLock)
         {
             connectedClients.Add(connectionId, (client, stream, writeSemaphore));
@@ -156,11 +164,13 @@ public class HybWebSocketServer
         var maskingKey = new byte[4];
 
         
-        
+
+
         try
         {
             while (client.Connected)
             {
+                
                 var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                 if (bytesRead == 0)
                 {
@@ -168,15 +178,16 @@ public class HybWebSocketServer
                 }
 
                 int offset = 0;
-                while (offset < bytesRead)
+                while (offset < bytesRead )
                 {
+                   
                     bool fin = (buffer[offset] & 0b10000000) != 0;
                     int opcode = buffer[offset] & 0b00001111;
                     bool masked = (buffer[offset + 1] & 0b10000000) != 0;
                     int payloadLength = buffer[offset + 1] & 0b01111111;
 
                     offset += 2;
-
+                    
                     if (payloadLength == 126)
                     {
                         payloadLength = BitConverter.ToUInt16(buffer, offset);
@@ -187,6 +198,13 @@ public class HybWebSocketServer
                         payloadLength = (int)BitConverter.ToUInt64(buffer, offset);
                         offset += 8;
                     }
+                    if (payloadLength > buffer.Length - offset)
+                    {
+                        // Handle error: payload length exceeds remaining buffer length
+                        Debug.LogError("Payload length exceeds buffer length");
+                        client.Close();
+                        break;
+                    }
 
                     byte[] payload = _bufferPool.Rent(payloadLength);
 
@@ -194,8 +212,23 @@ public class HybWebSocketServer
                     {
                         if (masked)
                         {
+                            if (offset + 4 > buffer.Length)
+                            {
+                                // Handle error: masking key extraction out of bounds
+                                Debug.LogError("Masking key extraction out of bounds");
+                                client.Close();
+                                break;
+                            }
                             Array.Copy(buffer, offset, maskingKey, 0, 4);
                             offset += 4;
+                        }
+
+                        if (offset + payloadLength > buffer.Length)
+                        {
+                            // Handle error: payload extraction out of bounds
+                            Debug.LogError("Payload extraction out of bounds");
+                            client.Close();
+                            break;
                         }
 
                         Array.Copy(buffer, offset, payload, 0, payloadLength);

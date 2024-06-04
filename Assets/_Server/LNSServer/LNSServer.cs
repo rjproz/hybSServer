@@ -19,8 +19,8 @@ public class LNSServer : IDisposable
 
     public Dictionary<string, LNSGame> games = new Dictionary<string, LNSGame>();
 
-    //public static SimpleWebServer webSocketServer;
-    public static HybWebSocketServer webSocketServer;
+    public static SimpleWebServer webSocketServer;
+    //public static HybWebSocketServer webSocketServer;
     public object thelock = new object();
 
     private bool disposed;
@@ -86,20 +86,20 @@ public class LNSServer : IDisposable
             hostnames.Add("localhost");
             hostnames.Add("vps.hybriona.com");
 #endif
-            
+            isSSL = false;
             SslConfig sslConfig = new SslConfig(isSSL, "cert.pfx", "rjproz",System.Security.Authentication.SslProtocols.Tls12);
 
             System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 
-            //webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
-            if (isSSL)
-            {
-                webSocketServer = new HybWebSocketServer("cert.pfx", "rjproz");
-            }
-            else
-            {
-                webSocketServer = new HybWebSocketServer("", "rjproz");
-            }
+            webSocketServer = new SimpleWebServer(10000, tcpConfig, 16 * 1024,3000, sslConfig) ;
+            //if (isSSL)
+            //{
+            //    webSocketServer = new HybWebSocketServer("cert.pfx", "rjproz");
+            //}
+            //else
+            //{
+            //    webSocketServer = new HybWebSocketServer("", "rjproz");
+            //}
 
 
 
@@ -360,7 +360,7 @@ public class LNSServer : IDisposable
             while (true)
             {
                 server.PollEvents();
-                //webSocketServer.ProcessMessageQueue();
+                webSocketServer.ProcessMessageQueue();
                 Thread.Sleep(threadWaitMilliseconds); // 30 times per second
             }
         }).Start();

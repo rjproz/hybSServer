@@ -6,15 +6,16 @@ using UnityEngine;
 public class MyWebsocketTest : MonoBehaviour
 {
     HybWebSocketServer webSocketServer;
-    private void Start()
+    private IEnumerator Start()
     {
+        Application.targetFrameRate = 10;
         bool isSSL = true;
-#if UNITY_EDITOR_OSX
+#if !UNITY_SERVER
         isSSL = false;
 #endif
 
 
-       
+
         if (isSSL)
         {
             webSocketServer = new HybWebSocketServer("cert.pfx", "rjproz");
@@ -28,7 +29,13 @@ public class MyWebsocketTest : MonoBehaviour
         webSocketServer.onDisconnect = OnClientDisconnected;
         webSocketServer.onData = OnDataReceived;
         webSocketServer.Start(10010);
-        
+
+        WaitForSeconds waitForSeconds = new WaitForSeconds(120);
+        while (true)
+        {
+            yield return waitForSeconds;
+            System.GC.Collect();
+        }
     }
 
     private void OnDataReceived(int connectionId, ArraySegment<byte> data)
