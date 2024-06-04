@@ -42,6 +42,15 @@ public class HybWebSocketServer
         }
     }
 
+    public int ConnectionCount()
+    {
+        return connectedClients.Count;
+    }
+
+    public Dictionary<int, (TcpClient, Stream, SemaphoreSlim)>.KeyCollection GetConnectionIds()
+    {
+        return connectedClients.Keys;
+    }
     public void Start(int port)
     {
         tcpListener = new TcpListener(IPAddress.Any, port);
@@ -55,6 +64,7 @@ public class HybWebSocketServer
         {
             var tcpClient = await tcpListener.AcceptTcpClientAsync();
             _ = HandleClientAsync(tcpClient); // Handle each client in a new task
+            Thread.Sleep(500);
         }
     }
 
@@ -90,16 +100,20 @@ public class HybWebSocketServer
                 else
                 {
                     Debug.LogError("Invalid WebSocket request");
-                    stream.Dispose();
-                    tcpClient.Close();
+                    stream?.Close();
+                    stream?.Dispose();
+                    tcpClient?.Close();
+                    tcpClient?.Dispose();
                 }
             }
         }
         catch (Exception ex)
         {
             Debug.LogError($"Exception: {ex}");
+            stream?.Close();
             stream?.Dispose();
-            tcpClient.Close();
+            tcpClient?.Close();
+            tcpClient?.Dispose();
         }
         finally
         {
@@ -129,18 +143,20 @@ public class HybWebSocketServer
         var writeSemaphore = new SemaphoreSlim(1, 1);
         client.NoDelay = true;
         client.SendTimeout = 5000;
-
+        client.ReceiveTimeout = 20000;
         lock (dictionaryLock)
         {
             connectedClients.Add(connectionId, (client, stream, writeSemaphore));
         }
+        onConnect?.Invoke(connectionId);
+        
 
         var messageBuffer = _bufferPool.Rent(bufferSize);
         int messageBufferLength = 0;
         var maskingKey = new byte[4];
 
-        onConnect?.Invoke(connectionId);
-
+        
+        
         try
         {
             while (client.Connected)
@@ -193,6 +209,12 @@ public class HybWebSocketServer
                             }
                         }
 
+                        if (opcode == 0x8) // Close frame
+                        {
+                            client.Close();
+                            break;
+                        }
+
                         if (messageBufferLength + payloadLength > messageBuffer.Length)
                         {
                             var newMessageBuffer = _bufferPool.Rent(messageBufferLength + payloadLength);
@@ -228,7 +250,7 @@ public class HybWebSocketServer
 
             if (connectedClients.ContainsKey(connectionId))
             {
-                onDisconnect?.Invoke(connectionId);
+                DelayInvoke(()=>onDisconnect?.Invoke(connectionId));
                 KickClient(connectionId);
             }
         }
@@ -268,29 +290,43 @@ public class HybWebSocketServer
 
     public async void SendOne(int connectionId, ArraySegment<byte> data)
     {
+        
         if (connectedClients.ContainsKey(connectionId))
         {
+            
             var clientInfo = connectedClients[connectionId];
-            var frameSegment = CreateWebSocketFrame(data);
-            await clientInfo.writeSemaphore.WaitAsync();
-            try
+            if (clientInfo.client.Connected)
             {
-                await clientInfo.stream.WriteAsync(frameSegment.Array, frameSegment.Offset, frameSegment.Count);
-            }
-            catch (SocketException socketEx)
-            {
-                if (connectedClients.ContainsKey(connectionId))
+                var frameSegment = CreateWebSocketFrame(data);
+                await clientInfo.writeSemaphore.WaitAsync();
+                try
                 {
-                    onDisconnect?.Invoke(connectionId);
-                    KickClient(connectionId);
+
+                    await clientInfo.stream.WriteAsync(frameSegment.Array, frameSegment.Offset, frameSegment.Count);
+
+                }
+                catch (SocketException socketEx)
+                {
+                    if (connectedClients.ContainsKey(connectionId))
+                    {
+                        DelayInvoke(() => onDisconnect?.Invoke(connectionId));
+                        KickClient(connectionId);
+
+                    }
+                }
+                catch
+                {
+
+                }
+                finally
+                {
+                    _bufferPool.Return(frameSegment.Array);
+                    clientInfo.writeSemaphore?.Release();
+
                 }
             }
-            finally
-            {
-                clientInfo.writeSemaphore.Release();
-                _bufferPool.Return(frameSegment.Array);
-            }
         }
+       
     }
 
     public void KickClient(int connectionId)
@@ -298,18 +334,27 @@ public class HybWebSocketServer
         try
         {
             var resource = connectedClients[connectionId];
-            resource.stream.Close();
-            resource.stream.Dispose();
-            resource.client.Close();
-            resource.writeSemaphore.Dispose();
+            
+            resource.stream?.Close();
+            resource.stream?.Dispose();
+            resource.client?.Close();
+            resource.client?.Dispose();
+            resource.writeSemaphore?.Dispose();
             lock (dictionaryLock)
             {
                 connectedClients.Remove(connectionId);
             }
+            System.GC.Collect();
         }
         catch (Exception ex)
         {
             Debug.LogError($"KICK CLIENT Exception: {ex}");
         }
+    }
+
+    private async void DelayInvoke(System.Action action)
+    {
+        await Task.Delay(100);
+        action();
     }
 }
