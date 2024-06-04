@@ -226,7 +226,7 @@ public class LNSServer : IDisposable
             };*/
 
             //webSocketServer.Start();
-            webSocketServer.Start((ushort)(this.port + 1));
+            webSocketServer.Start((ushort)(this.port + 2));
             Debug.Log("WebSocket Server Started");
 
             EventBasedNetListener listener = new EventBasedNetListener();
