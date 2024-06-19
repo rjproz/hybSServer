@@ -74,7 +74,7 @@ public class LNSServer : IDisposable
     {
         new Thread(() =>
         {
-            var tcpConfig = new TcpConfig(true, 120, 120);
+            var tcpConfig = new TcpConfig(true, 120 * 1000, 120 * 1000); //120 seconds
 
             bool isSSL = true;
 
