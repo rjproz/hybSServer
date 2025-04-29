@@ -12,7 +12,7 @@ public class LNSServer : IDisposable
     public string key { get; private set; }
     public int serverTick { get; private set; }
     public int threadWaitMilliseconds { get; private set; }
-
+    
     public Dictionary<int, LNSClient> clients = new Dictionary<int, LNSClient>();
     public Dictionary<int, LNSClient> clients_webgl = new Dictionary<int, LNSClient>();
     private List<string> connectedClientIds = new List<string>();
@@ -22,7 +22,7 @@ public class LNSServer : IDisposable
     public static SimpleWebServer webSocketServer;
     //public static HybWebSocketServer webSocketServer;
     public object thelock = new object();
-
+    public ulong universalIdCounter = 1;
     private bool disposed;
     
 
@@ -110,12 +110,14 @@ public class LNSServer : IDisposable
                 {
                     client = LNSClient.CreateWebGlClient();
                     client.networkid = connectionId;
+                    
                     clients_webgl.Add(connectionId, client);
                 }
                 else
                 {
                     client = clients_webgl[connectionId];
                     client.networkid = connectionId;
+                   
                 }
                 
 
@@ -156,23 +158,31 @@ public class LNSServer : IDisposable
                         client.gameVersion = version;
                         client.platform = platform;
 
+                        lock (thelock)
+                        {
+                            client.universalId = ++universalIdCounter;
+                            bool valid = !connectedClientIds.Contains(userid);
+                            //LNSConstants.CLIENT_EVT_UNAUTHORIZED_GAME
+                            //LNSConstants.CLIENT_EVT_USER_ALREADY_CONNECTED
+                            if (valid)
+                            {
+                                connectedClientIds.Add(userid);
+                                Debug.Log("Connected : " + connectionId + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
+                                //byte[] verifiedMsg = new byte[1];
+                                //LNSWriter writer = LNSWriter.GetFromPool();
+                                //writer.Put(LNSConstants.CLIENT_EVT_VERIFIED);
+                                //writer.Put(client.universalId);
+                                //webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(writer.Data,0, writer.Length));
+                                //writer.Recycle();
 
-                        bool valid = !connectedClientIds.Contains(userid);
-                        //LNSConstants.CLIENT_EVT_UNAUTHORIZED_GAME
-                        //LNSConstants.CLIENT_EVT_USER_ALREADY_CONNECTED
-                        if (valid)
-                        {
-                            connectedClientIds.Add(userid);
-                            Debug.Log("Connected : " + connectionId + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
-                            byte[] verifiedMsg = new byte[1];
-                            verifiedMsg[0] = LNSConstants.CLIENT_EVT_VERIFIED;
-                            webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(verifiedMsg));
-                        }
-                        else
-                        {
-                            client.Dispose();
-                            clients_webgl.Remove(connectionId);
-                            webSocketServer.KickClient(connectionId);
+                                client.SendVerifiedMessage();
+                            }
+                            else
+                            {
+                                client.Dispose();
+                                clients_webgl.Remove(connectionId);
+                                webSocketServer.KickClient(connectionId);
+                            }
                         }
                         
 
@@ -285,6 +295,7 @@ public class LNSServer : IDisposable
                                 {
                                     client = new LNSClient(peer);
                                     clients.Add(peer.Id, client);
+                                   
                                 }
                                 else
                                 {
@@ -297,10 +308,13 @@ public class LNSServer : IDisposable
                                 client.gameKey = gameKey;
                                 client.gameVersion = version;
                                 client.platform = platform;
+                                client.universalId = ++universalIdCounter;
                                 connectedClientIds.Add(userid);
                                 Debug.Log("Connected : " + client.networkid + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
 
                                 Log(string.Format("Connected {0} {1} {2} {3}", gameKey, displayName, platform, userid));
+
+                                client.SendVerifiedMessage();
                             }
 
                         }

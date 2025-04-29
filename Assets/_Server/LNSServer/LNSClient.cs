@@ -8,6 +8,7 @@ public class LNSClient : IDisposable,IQuadTreeObject
     
     
     public int networkid { get; set; }
+    public ulong universalId { get; set; }
     public string id { get; set; }
     public string displayname { get; set; }
     public string gameKey { get; set; }
@@ -47,10 +48,27 @@ public class LNSClient : IDisposable,IQuadTreeObject
         return position;
     }
 
+
+    public void SendVerifiedMessage()
+    {
+        lock (thelock)
+        {
+            writer.Reset();
+            writer.Put(LNSConstants.CLIENT_EVT_VERIFIED);
+            writer.Put(universalId);
+            if (isWebGL)
+            {
+                LNSServer.webSocketServer.SendOne(networkid, new ArraySegment<byte>(writer.Data, 0, writer.Length));
+            }
+            else
+            {
+                peer.Send(writer, DeliveryMethod.ReliableOrdered);
+            }
+        }
+    }
+
     public void SendDisconnectEvent(bool leftroom)
     {
-       
-
         if (connectedRoom != null)
         {
             connectedRoom.RemovePlayer(this);

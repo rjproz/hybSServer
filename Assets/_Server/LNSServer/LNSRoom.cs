@@ -278,6 +278,7 @@ public class LNSRoom : IDisposable
                         client.writer.Put(clients[i].displayname);
                         client.writer.Put((byte) clients[i].platform);
                         client.writer.Put(clients[i].networkid);
+                        client.writer.Put(clients[i].universalId);
 
                         if (client.isWebGL)
                         {
