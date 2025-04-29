@@ -160,20 +160,15 @@ public class LNSServer : IDisposable
 
                         lock (thelock)
                         {
-                            client.universalId = ++universalIdCounter;
+                            client.universalId = universalIdCounter++;
                             bool valid = !connectedClientIds.Contains(userid);
                             //LNSConstants.CLIENT_EVT_UNAUTHORIZED_GAME
                             //LNSConstants.CLIENT_EVT_USER_ALREADY_CONNECTED
                             if (valid)
                             {
                                 connectedClientIds.Add(userid);
-                                Debug.Log("Connected : " + connectionId + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
-                                //byte[] verifiedMsg = new byte[1];
-                                //LNSWriter writer = LNSWriter.GetFromPool();
-                                //writer.Put(LNSConstants.CLIENT_EVT_VERIFIED);
-                                //writer.Put(client.universalId);
-                                //webSocketServer.SendOne(client.networkid, new ArraySegment<byte>(writer.Data,0, writer.Length));
-                                //writer.Recycle();
+                                Debug.Log("Connected - UniversalId: " + client.universalId + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
+                                
 
                                 client.SendVerifiedMessage();
                             }
@@ -308,7 +303,7 @@ public class LNSServer : IDisposable
                                 client.gameKey = gameKey;
                                 client.gameVersion = version;
                                 client.platform = platform;
-                                client.universalId = ++universalIdCounter;
+                                client.universalId = universalIdCounter++;
                                 connectedClientIds.Add(userid);
                                 Debug.Log("Connected : " + client.networkid + "| User ID: " + userid + " | GameKey: " + gameKey + " | Total clients: " + clients.Count + " | Total Web Client: " + clients_webgl.Count);
 
