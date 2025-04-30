@@ -392,6 +392,7 @@ public class LNSRoom : IDisposable
             writer.Put(client.displayname);
             writer.Put((byte)client.platform);
             writer.Put(client.networkid);
+            writer.Put(client.universalId);
 
             for (int i=0;i<clients.Count;i++)
             {
