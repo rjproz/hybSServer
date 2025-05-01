@@ -22,7 +22,7 @@ public class LNSServer : IDisposable
     public static SimpleWebServer webSocketServer;
     //public static HybWebSocketServer webSocketServer;
     public object thelock = new object();
-    public ulong universalIdCounter = 1;
+    public uint universalIdCounter = 1;
     private bool disposed;
     
 
