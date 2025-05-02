@@ -83,7 +83,7 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_LOCK_ROOM)
         {
-            if (from.id == masterClient.id)
+            if (from.universalId == masterClient.universalId)
             {
                 isOpen = false;
             }
@@ -91,7 +91,7 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_UNLOCK_ROOM)
         {
-            if (from.id == masterClient.id)
+            if (from.universalId == masterClient.universalId)
             {
                 isOpen = true;
             }
@@ -99,16 +99,16 @@ public class LNSRoom : IDisposable
         }
         else if (code == LNSConstants.SERVER_EVT_RAW_DATA_TO_CLIENT)
         {
-            string targetId = reader.GetString();
+            var targetId = reader.GetUInt();
 
             lock (thelock)
             {
-                var targetClient = clients.Find(client => client.id == targetId);
+                var targetClient = clients.Find(client => client.universalId == targetId);
                 if (targetClient != null)
                 {
                     writer.Reset();
                     writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                    writer.Put(from.id);
+                    writer.Put(from.universalId);
                     writer.Put(reader.GetRemainingBytes());
                     if (targetClient.isWebGL)
                     {
@@ -139,11 +139,11 @@ public class LNSRoom : IDisposable
                     //Debug.LogFormat("From {0} - Search Rect {1},{2} {3},{4} - Found: {5}", from.id, searchRect.center.x, searchRect.center.x, searchRect.width, searchRect.height, quadTreeSearchResults.Count);
                     writer.Reset();
                     writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                    writer.Put(from.id);
+                    writer.Put(from.universalId);
                     writer.Put(reader.GetRemainingBytes());
                     for (int i = 0; i < quadTreeSearchResults.Count; i++)
                     {
-                        if (quadTreeSearchResults[i].id != from.id)
+                        if (quadTreeSearchResults[i].universalId != from.universalId)
                         {
                             if (quadTreeSearchResults[i].isWebGL)
                             {
@@ -204,12 +204,12 @@ public class LNSRoom : IDisposable
             {
                 writer.Reset();
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_RAW);
-                writer.Put(from.id);
+                writer.Put(from.universalId);
                 writer.Put(reader.GetRemainingBytes());
                
                 for (int i = 0; i < clients.Count; i++)
                 {
-                    if (clients[i].id != from.id)
+                    if (clients[i].universalId != from.universalId)
                     {
                         if (clients[i].isWebGL)
                         {
@@ -238,7 +238,7 @@ public class LNSRoom : IDisposable
     {
         lock (thelock)
         {
-            return disconnectedClients.Contains(client.id);
+            return disconnectedClients.Contains(client.generatedId);
         }
     }
 
@@ -252,9 +252,9 @@ public class LNSRoom : IDisposable
                 quadTree.Insert(client);
             }
             clients.Add(client);
-            if (disconnectedClients.Contains(client.id))
+            if (disconnectedClients.Contains(client.generatedId))
             {
-                disconnectedClients.Remove(client.id);
+                disconnectedClients.Remove(client.generatedId);
             }
         }
         SendPlayerConnectedEvent(client); // player connected event
@@ -270,14 +270,14 @@ public class LNSRoom : IDisposable
                
                 for (int i = 0; i < clients.Count; i++)
                 {
-                    if (clients[i].id != client.id)
+                    if (clients[i].universalId != client.universalId)
                     {
                         client.writer.Reset();
                         client.writer.Put(LNSConstants.CLIENT_EVT_ROOM_PLAYER_CONNECTED);
-                        client.writer.Put(clients[i].id);
+                        client.writer.Put(clients[i].generatedId);
                         client.writer.Put(clients[i].displayname);
                         client.writer.Put((byte) clients[i].platform);
-                        client.writer.Put(clients[i].networkid);
+                       
                         client.writer.Put(clients[i].universalId);
 
                         if (client.isWebGL)
@@ -293,7 +293,7 @@ public class LNSRoom : IDisposable
 
                 writer.Reset();
                 writer.Put(LNSConstants.CLIENT_EVT_ROOM_MASTERCLIENT_CHANGED);
-                writer.Put(masterClient.id);
+                writer.Put(masterClient.universalId);
 
                 if (client.isWebGL)
                 {
@@ -328,7 +328,7 @@ public class LNSRoom : IDisposable
 
     public void RemovePlayer(LNSClient client)
     {
-        string clientid = client.id;
+        string clientid = client.generatedId;
         lock (thelock)
         {
             if (roomParameters.isQuadTreeAllowed)
@@ -369,7 +369,7 @@ public class LNSRoom : IDisposable
         }
         
         SendPlayerDisconnectedEvent(client);
-        if(clientid == masterClient.id)
+        if(clientid == masterClient.generatedId)
         {
             masterClient = clients[0];
             SendMasterPlayerChangedEvent(); //Send master client changed event
@@ -388,15 +388,15 @@ public class LNSRoom : IDisposable
 
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_PLAYER_CONNECTED);
             //UnityEngine.Debug.Log("SendPlayerConnectedEvent " + client.id + " "+client.displayname);
-            writer.Put(client.id);
+            writer.Put(client.generatedId);
             writer.Put(client.displayname);
             writer.Put((byte)client.platform);
-            writer.Put(client.networkid);
+            //writer.Put(client.networkid);
             writer.Put(client.universalId);
 
             for (int i=0;i<clients.Count;i++)
             {
-                if(clients[i].id != client.id)
+                if(clients[i].universalId != client.universalId)
                 {
                     if (clients[i].isWebGL)
                     {
@@ -418,7 +418,7 @@ public class LNSRoom : IDisposable
         {
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_PLAYER_DISCONNECTED);
-            writer.Put(client.id);
+            writer.Put(client.universalId);
 
             for (int i = 0; i < clients.Count; i++)
             {
@@ -441,7 +441,7 @@ public class LNSRoom : IDisposable
         {
             writer.Reset();
             writer.Put(LNSConstants.CLIENT_EVT_ROOM_MASTERCLIENT_CHANGED);
-            writer.Put(masterClient.id);
+            writer.Put(masterClient.universalId);
 
             for (int i = 0; i < clients.Count; i++)
             {

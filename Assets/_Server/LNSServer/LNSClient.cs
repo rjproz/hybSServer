@@ -9,7 +9,7 @@ public class LNSClient : IDisposable,IQuadTreeObject
     
     public int networkid { get; set; }
     public uint universalId { get; set; }
-    public string id { get; set; }
+    public string generatedId { get; set; }
     public string displayname { get; set; }
     public string gameKey { get; set; }
     public string gameVersion { get; set; }

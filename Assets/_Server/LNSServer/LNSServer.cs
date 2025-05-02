@@ -67,7 +67,7 @@ public class LNSServer : IDisposable
 
     public void Log(string data,LNSClient client)
     {
-        System.IO.File.AppendAllText(logFilePath, System.DateTime.Now + "\n" + data + string.Format(" by {0} {1} {2} {3}", client.gameKey, client.displayname, client.platform, client.id) +  "\n\n");
+        System.IO.File.AppendAllText(logFilePath, System.DateTime.Now + "\n" + data + string.Format(" by {0} {1} {2} {3}", client.gameKey, client.displayname, client.platform, client.generatedId) +  "\n\n");
     }
 
     public void Start()
@@ -152,7 +152,7 @@ public class LNSServer : IDisposable
                         CLIENT_PLATFORM platform = (CLIENT_PLATFORM)reader.GetByte();
 
 
-                        client.id = userid;
+                        client.generatedId = userid;
                         client.displayname = displayName;
                         client.gameKey = gameKey;
                         client.gameVersion = version;
@@ -212,9 +212,9 @@ public class LNSServer : IDisposable
                     {
                         LNSClient client = clients_webgl[networkId];
                         client.SendDisconnectEvent(false);
-                        if (connectedClientIds.Contains(client.id))
+                        if (connectedClientIds.Contains(client.generatedId))
                         {
-                            connectedClientIds.Remove(client.id);
+                            connectedClientIds.Remove(client.generatedId);
                         }
                         client.Dispose();
                         clients_webgl.Remove(networkId);
@@ -298,7 +298,7 @@ public class LNSServer : IDisposable
                                     client.peer = peer;
                                 }
                                 client.networkid = peer.Id;
-                                client.id = userid;
+                                client.generatedId = userid;
                                 client.displayname = displayName;
                                 client.gameKey = gameKey;
                                 client.gameVersion = version;
@@ -354,9 +354,9 @@ public class LNSServer : IDisposable
                     {
                         LNSClient client = clients[peerId];
                         client.SendDisconnectEvent(false);
-                        if (connectedClientIds.Contains(client.id))
+                        if (connectedClientIds.Contains(client.generatedId))
                         {
-                            connectedClientIds.Remove(client.id);
+                            connectedClientIds.Remove(client.generatedId);
                         }
                         client.Dispose();
                         clients.Remove(peerId);
