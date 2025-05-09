@@ -67,7 +67,7 @@ public class LNSServer : IDisposable
 
     public void Log(string data,LNSClient client)
     {
-        System.IO.File.AppendAllText(logFilePath, System.DateTime.Now + "\n" + data + string.Format(" by {0} {1} {2} {3}", client.gameKey, client.displayname, client.platform, client.generatedId) +  "\n\n");
+        System.IO.File.AppendAllText(logFilePath, DateTime.Now + "\n" + data + $" by Key: {client.gameKey}, Name: {client.displayname}, Platform: {client.platform}, Id: {client.generatedId} , CCU: {connectedClientIds.Count}\n\n");
     }
 
     public void Start()
