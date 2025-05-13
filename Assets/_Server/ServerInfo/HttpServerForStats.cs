@@ -1,5 +1,4 @@
-﻿using System.Text;
-using UnityEngine;
+﻿using UnityEngine;
 using Hybriona;
 public class HttpServerForStats 
 {
@@ -9,10 +8,17 @@ public class HttpServerForStats
     public void Start(LNSServerManager serverManager,int port)
     {
         this.serverManager = serverManager;
-        httpServer = new HttpServer(port);
-        httpServer.onHttpRequestReceived += OnHttpRequestReceived;
+        httpServer = new HttpServer(port,2000);
+        httpServer.Get("/", (context, router) =>
+        {
+           
+            context.Response.SendResponse(JsonUtility.ToJson(serverManager.GetData()), HttpContentType.Json);
+            context.Dispose();
+            context = null;
+        });
+       
         httpServer.Start();
-        
+
     }
 
     public void Stop()
@@ -20,16 +26,10 @@ public class HttpServerForStats
         if(httpServer != null)
         {
             httpServer.Stop();
-            httpServer.onHttpRequestReceived = null;
+            
         }
     }
 
-    private void OnHttpRequestReceived(HttpRequest request, HttpResponse response)
-    {
-        response.SetHeader("Content-Type", "application/json");
-        byte[] data = Encoding.ASCII.GetBytes(JsonUtility.ToJson(serverManager.GetData()));
-        response.responseStream.Write(data, 0, data.Length);
-        response.Send(200);
-    }
+    
 
 }
