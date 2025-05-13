@@ -112,7 +112,7 @@
       }
     },
     "hybriona.unitylib": {
-      "version": "file:/Users/rjproz/Downloads/hybriona.unitylib.tgz",
+      "version": "file:hybriona.unitylib.archive",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {}
